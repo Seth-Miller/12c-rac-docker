@@ -2,7 +2,7 @@ FROM sameersbn/bind:latest
 MAINTAINER sethmiller.sm@gmail.com
 
 
-ENV ["KEYS_DIR", "/keys"]
+ENV ["KEYS_DIR", "/bindauth"]
 
 
 RUN ["mkdir", "-p", "/etc/keys"]
