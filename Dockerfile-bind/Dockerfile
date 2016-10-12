@@ -42,12 +42,12 @@ COPY ["named.conf", "/etc/bind/"]
 
 
 # Add supplemental entrypoint
-COPY ["entrypoint_supplemental.sh", "/sbin/"]
-RUN ["chmod", "755", "/sbin/entrypoint_supplemental.sh"]
+COPY ["entrypoint_supplemental", "/etc/"]
 
 
 # Modify the original entrypoint.sh to include the supplemental
-RUN ["echo", "exec /sbin/entrypoint_supplemental.sh", ">>", "/sbin/entrypoint.sh"]
+RUN echo "source /etc/entrypoint_supplemental" >> /sbin/entrypoint.sh
+RUN echo "create_bind_key_dir" >> /sbin/entrypoint.sh
 
 
 # Expose the keys
