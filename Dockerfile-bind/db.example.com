@@ -6,7 +6,7 @@ $TTL    86400
                         2419200         ; Expire
                           86400 )       ; Negative Cache TTL
 ;
-@               IN      NS      bind.
+@               IN      NS      localhost.
 clu-121-gns             A       10.10.10.20
 $ORIGIN clu-121.example.com.
 @                       NS clu-121-gns.example.com.
