@@ -1,0 +1,17 @@
+zone "example.com." {
+  type master;
+  allow-update { key dnsupdate.; };
+  file "/etc/bind/db.example.com";
+};
+
+zone "10.10.10.in-addr.arpa." {
+  type master;
+  allow-update { key dnsupdate.; };
+  file "/etc/bind/db.10.10.10";
+};
+
+zone "11.11.11.in-addr.arpa." {
+  type master;
+  allow-update { key dnsupdate.; };
+  file "/etc/bind/db.11.11.11";
+};
