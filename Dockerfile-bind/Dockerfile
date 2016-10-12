@@ -18,3 +18,18 @@ COPY ["keys.conf", "/etc/bind/"]
 # Add the key generated above to /etc/bind/keys.conf
 RUN SECRET_KEY=$(grep '^Key:' /etc/keys/Kdnsupdate.*.private | awk '{print $2}') \
       && sed -i 's!REPLACE_WITH_SECRET_KEY!'${SECRET_KEY?}'!' /etc/bind/keys.conf
+
+# Config file for zones
+COPY ["named.conf.custom-zones", "/etc/bind/"]
+
+# Database files
+COPY ["db.example.com", "/etc/bind/"]
+
+# Database files
+COPY ["db.10.10.10", "/etc/bind/"]
+
+# Database files
+COPY ["db.11.11.11", "/etc/bind/"]
+
+# Overwrite named.conf to include keys.conf and named.conf.custom-zones
+COPY ["named.conf", "/etc/bind/"]
