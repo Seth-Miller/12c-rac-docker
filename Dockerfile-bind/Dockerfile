@@ -33,3 +33,6 @@ COPY ["db.11.11.11", "/etc/bind/"]
 
 # Overwrite named.conf to include keys.conf and named.conf.custom-zones
 COPY ["named.conf", "/etc/bind/"]
+
+# Expose the keys
+VOLUME ["/etc/keys"]
