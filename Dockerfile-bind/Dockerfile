@@ -41,5 +41,14 @@ COPY ["db.11.11.11", "/etc/bind/"]
 COPY ["named.conf", "/etc/bind/"]
 
 
+# Add supplemental entrypoint
+COPY ["entrypoint_supplemental.sh", "/sbin/"]
+RUN ["chmod", "755", "/sbin/entrypoint_supplemental.sh"]
+
+
+# Modify the original entrypoint.sh to include the supplemental
+RUN ["echo", "exec /sbin/entrypoint_supplemental.sh", ">>", "/sbin/entrypoint.sh"]
+
+
 # Expose the keys
 VOLUME ["/etc/keys"]
