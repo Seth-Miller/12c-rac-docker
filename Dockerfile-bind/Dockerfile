@@ -2,9 +2,6 @@ FROM sameersbn/bind:latest
 MAINTAINER sethmiller.sm@gmail.com
 
 
-ENV ["KEYS_DIR", "/bindauth"]
-
-
 RUN ["mkdir", "-p", "/etc/keys"]
 
 
@@ -39,16 +36,3 @@ COPY ["db.11.11.11", "/etc/bind/"]
 
 # Overwrite named.conf to include keys.conf and named.conf.custom-zones
 COPY ["named.conf", "/etc/bind/"]
-
-
-# Add supplemental entrypoint
-COPY ["entrypoint_supplemental", "/etc/"]
-
-
-# Modify the original entrypoint.sh to include the supplemental
-RUN echo "source /etc/entrypoint_supplemental" >> /sbin/entrypoint.sh
-RUN echo "create_bind_key_dir" >> /sbin/entrypoint.sh
-
-
-# Expose the keys
-VOLUME ["/etc/keys"]
