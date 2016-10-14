@@ -15,6 +15,10 @@ sudo chmod 744 /srv/docker/pipework/pipework
 ```
 
 
+# Oracle installation files
+Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`.
+
+
 # Networks
 
 The BIND, DHCPD, and RAC containers communicate over a 10.10.10.0/24 network. This is known within the cluster as the public network.
@@ -98,4 +102,238 @@ docker network connect --ip 11.11.11.11 priv dhcpd
 Start the DHCPD container.
 ```
 docker start dhcpd
+```
+
+
+# RAC Node
+The RAC node container will be used for the grid infrastructure and database software. This process can be duplicated to create as many nodes as you want in your cluster.
+
+Create the RAC node image.
+```
+docker build --tag giready Dockerfile-bind
+```
+
+Create the RAC node container. The `/oracledata/stage` directory holds the Oracle installation files. The `/sys/fs/cgroup` directory is necessary for systemd to run in the containers. The grid installation will fail without at least 1.5GB of shared memory. I set this container to 2GB.
+```
+docker run \
+--detach true \
+--interactive true \
+--privileged true \
+--name rac1 \
+--hostname rac1 \
+--volume /oracledata/stage:/stage \
+--volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--dns=10.10.10.10 \
+--shm-size 2048m \
+giready \
+/usr/lib/systemd/systemd --system --unit=multi-user.target
+```
+
+Add the two custom networks to the RAC node container. I initially tried to use the `docker network connect` commands that were used for the DHCPD container but the name of the network adapter must be consistent in all the RAC node container and `docker network connect` does not allow you to specify an adapter name. Pipework is essentially doing exactly what `docker network connect` does with the additional abilities to specify the network interface name both inside the container and on the host as well not giving the new adapters IPs so the IPs can come from the dhcpd container which will update the bind container. Unlike the native docker network functions, the pipework virtual adapters are not deleted when the container is removed which is the reason for the `ip link delete` commands. Pipework is using the existing networks instead of creating new ones.
+```
+sudo ip link delete rac1-pub
+sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac1-pub rac1 0.0.0.0/24
+
+sudo ip link delete rac1-priv
+sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac1-priv rac1 0.0.0.0/24
+```
+
+Start dhclient for each of the newly added networks. The IPs will come from the dhcpd container which will update the bind container.
+```
+docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
+docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth2.pid eth2
+```
+
+Add the udev rules file for the ASM disks to the RAC node container. Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of AFD.
+
+Modify the `99-asm-disks.rules` file to reflect the devices on the host system that you have designated as ASM disks. For example, I have designated /dev/sdd, /dev/sde, and /dev/sdf as the three disks that will comprise my DATA ASM disk group.
+```
+KERNEL=="sdd", SYMLINK+="asmdisks/asm-clu-121-DATA-disk1", GROUP="54321"
+KERNEL=="sde", SYMLINK+="asmdisks/asm-clu-121-DATA-disk2", GROUP="54321"
+KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
+```
+
+Copy the file into the RAC node container.
+```
+docker cp 99-asm-disks.rules rac1:/etc/udev/rules.d/
+```
+
+Tell udev to read the new rules.
+```
+docker exec rac1 udevadm trigger
+```
+
+Now my ASM disk devices look like this in the RAC node container.
+```
+[root@rac1 /]# ll /dev/sd[d-f]
+brw-rw----. 1 root oinstall 8, 48 Oct 14 19:56 /dev/sdd
+brw-rw----. 1 root oinstall 8, 64 Oct 14 19:56 /dev/sde
+brw-rw----. 1 root oinstall 8, 80 Oct 14 19:56 /dev/sdf
+[root@rac1 /]# ll -d /dev/asmdisks/
+drwxr-xr-x. 2 root root 100 Oct 10 21:52 /dev/asmdisks/
+[root@rac1 /]# ll /dev/asmdisks/
+total 0
+lrwxrwxrwx. 1 root root 6 Oct 14 19:23 asm-clu-121-DATA-disk1 -> ../sdd
+lrwxrwxrwx. 1 root root 6 Oct 14 19:53 asm-clu-121-DATA-disk2 -> ../sde
+lrwxrwxrwx. 1 root root 6 Oct 14 19:53 asm-clu-121-DATA-disk3 -> ../sdf
+```
+
+Connect to the RAC node container and execute the grid infrastructure installer. This will install the grid software only.
+```
+docker exec -it rac1 bash
+su - grid
+
+GRID_HOME=/u01/app/12.1.0/grid
+
+/stage/grid/runInstaller -ignoreSysPrereqs -silent -force \
+"INVENTORY_LOCATION=/u01/app/oraInventory" \
+"UNIX_GROUP_NAME=oinstall" \
+"ORACLE_HOME=/u01/app/12.1.0/grid" \
+"ORACLE_BASE=/u01/app/oracle" \
+"oracle.install.option=CRS_SWONLY" \
+"oracle.install.asm.OSDBA=asmdba" \
+"oracle.install.asm.OSOPER=" \
+"oracle.install.asm.OSASM=asmadmin"
+```
+
+Run the two root scripts as root.
+```
+/u01/app/oraInventory/orainstRoot.sh
+/u01/app/12.1.0/grid/root.sh
+```
+
+Exit the rac node container and create a new image of the RAC node container which will be used as the base of all of the RAC node containers.
+```
+docker commit rac1 giinstalled
+```
+
+Create a new RAC node container from the image you just created or just skip this step and continue using the same container.
+```
+docker rm -f rac1
+
+docker run \
+--detach true \
+--interactive true \
+--privileged true \
+--name rac1 \
+--hostname rac1 \
+--volume /oracledata/stage:/stage \
+--volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--dns=10.10.10.10 \
+--shm-size 2048m \
+giinstalled \
+/usr/lib/systemd/systemd --system --unit=multi-user.target
+```
+
+Create the two networks and start dhclient on them as was done earlier. This step does not need to be done if you are continuing to use the same container.
+```
+sudo ip link delete rac1-pub
+sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac1-pub rac1 0.0.0.0/24
+
+sudo ip link delete rac1-priv
+sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac1-priv rac1 0.0.0.0/24
+
+docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
+docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth2.pid eth2
+```
+
+Create a second RAC node container.
+```
+docker run \
+--detach true \
+--interactive true \
+--privileged true \
+--name rac2 \
+--hostname rac2 \
+--volume /oracledata/stage:/stage \
+--volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--dns=10.10.10.10 \
+--shm-size 2048m \
+giinstalled \
+/usr/lib/systemd/systemd --system --unit=multi-user.target
+```
+
+Create the two networks and start dhclient on them.
+```
+sudo ip link delete rac2-pub
+sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac2-pub rac2 0.0.0.0/24
+
+sudo ip link delete rac2-priv
+sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac2-priv rac2 0.0.0.0/24
+
+docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth1.pid eth1
+docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth2.pid eth2
+```
+
+Populate the known_hosts file on each RAC node container with the other container's signature.
+```
+docker exec rac1 su - grid -c "ssh rac1 date"
+
+docker exec rac1 su - grid -c "ssh rac2 date"
+
+docker exec rac2 su - grid -c "ssh rac1 date"
+
+docker exec rac2 su - grid -c "ssh rac2 date"
+```
+
+Connect to the first RAC node container and configure the installed grid infrastructure. Modify the `oracle.install.asm.diskGroup.disks` and `oracle.install.asm.diskGroup.diskDiscoveryString` parameters to match the ASM block devices from the host.
+```
+docker exec -it rac1 bash
+su - grid
+
+GRID_HOME=/u01/app/12.1.0/grid
+
+${GRID_HOME?}/crs/config/config.sh -ignoreSysPrereqs -silent \
+"INVENTORY_LOCATION=/u01/app/oraInventory" \
+"SELECTED_LANGUAGES=en" \
+"oracle.install.option=CRS_CONFIG" \
+"ORACLE_BASE=/u01/app/oracle" \
+"ORACLE_HOME=/u01/app/12.1.0/grid" \
+"oracle.install.asm.OSDBA=asmdba" \
+"oracle.install.asm.OSOPER=" \
+"oracle.install.asm.OSASM=asmadmin" \
+"oracle.install.crs.config.gpnp.scanName=clu-121-scan.clu-121.example.com" \
+"oracle.install.crs.config.gpnp.scanPort=1521 " \
+"oracle.install.crs.config.ClusterType=STANDARD" \
+"oracle.install.crs.config.clusterName=clu-121" \
+"oracle.install.crs.config.gpnp.configureGNS=true" \
+"oracle.install.crs.config.autoConfigureClusterNodeVIP=true" \
+"oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS" \
+"oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com" \
+"oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com" \
+"oracle.install.crs.config.clusterNodes=rac1:AUTO,rac2:AUTO" \
+"oracle.install.crs.config.networkInterfaceList=eth1:10.10.10.0:1,eth2:11.11.11.0:2" \
+"oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE" \
+"oracle.install.crs.config.useIPMI=false" \
+"oracle.install.asm.SYSASMPassword=oracle_4U" \
+"oracle.install.asm.monitorPassword=oracle_4U" \
+"oracle.install.asm.diskGroup.name=DATAC1" \
+"oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
+"oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
+"oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
+"oracle.install.asm.useExistingDiskGroup=false"
+```
+
+Run the root script as the root user on the first RAC node container, then the second. Wait for the first to complete before running the second.
+```
+/u01/app/12.1.0/grid/root.sh
+```
+
+Copy the configuration assistant response file into the first RAC node container. Change the passwords in the file if necessary before copying.
+```
+docker cp tools_config.rsp rac1:/tmp/
+```
+
+Run the configuration assistant on the first RAC node container only.
+```
+su - grid
+
+GRID_HOME=/u01/app/12.1.0/grid
+
+${GRID_HOME?}/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/tmp/tools_config.rsp
+```
+
+Disconnect from the RAC node container and delete the configuration assistant response file.
+```
+docker exec rac1 rm -f /tmp/tools_config.rsp
 ```
