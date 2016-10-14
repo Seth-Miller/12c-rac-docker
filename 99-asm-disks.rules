@@ -1,0 +1,3 @@
+KERNEL=="sdd", SYMLINK+="asmdisks/asm-clu-121-DATA-disk1", GROUP="54321"
+KERNEL=="sde", SYMLINK+="asmdisks/asm-clu-121-DATA-disk2", GROUP="54321"
+KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
