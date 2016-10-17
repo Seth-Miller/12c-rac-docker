@@ -1,6 +1,9 @@
 # 12c-rac-docker
-Multiple node Oracle RAC cluster running in Docker containers
+Multiple node Oracle RAC cluster running in Docker containers.
+
 # How to use
+This setup uses block devices for the ASM disks. I would recommend three disks that are at least 4GB each in size.
+
 It is important when creating the BIND and DHCPD containers that the BIND container is created first. The reason is that there is a key created as part of the BIND image build that DHCPD will use for dynamic dns updates and the key needs to exist when the DHCPD container is created.
 
 
@@ -16,19 +19,23 @@ sudo chmod 744 /srv/docker/pipework/pipework
 
 
 # Oracle installation files
-Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`.
+Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage`.
 
 
 # Networks
 
 The BIND, DHCPD, and RAC containers communicate over a 10.10.10.0/24 network. This is known within the cluster as the public network.
+
+Create the public virtual network.
 ```
 docker network create --subnet=10.10.10.0/24 pub
 ```
 
 The 11.11.11.0/24 network is known within the cluster as the private network. This will be used as the cluster interconnect. DHCPD will also serve IP addresses on this network.
+
+Create the private virtual network.
 ```
-docker network create --subnet=11.11.11.0/24 pub
+docker network create --subnet=11.11.11.0/24 priv
 ```
 
 
@@ -40,9 +47,9 @@ Create the BIND image.
 docker build --tag bind Dockerfile-bind
 ```
 
-Create the BIND container but don't start it until the following step is complete. Unless you need it, leave the web administrator disabled. The `-4` option prevents named from listening on the IPV6 addresses.
+Create the BIND container but don't start it until the step following this one is complete. Unless you need it, leave the WEBMIN disabled. The `-4` option prevents named from listening on the IPV6 addresses.
 ```
-docker create
+docker create \
 --interactive \
 --tty \
 --name bind \
@@ -55,7 +62,7 @@ bind \
 -4
 ```
 
-Now connect the 10.10.10.0/24 network to the BIND container.
+Connect the 10.10.10.0/24 network to the BIND container.
 ```
 docker network connect --ip 10.10.10.10 pub bind
 ```
@@ -67,11 +74,12 @@ docker start bind
 
 
 # DHCPD
-The DHCPD container will be used for generating IP addresses need by the cluster nodes.
+The DHCPD container will be used for generating IP addresses needed by the cluster nodes.
 
 Create the configuration directory.
 ```
-mkdir -p /srv/docker/dhcpd
+sudo mkdir -p /srv/docker/dhcpd
+sudo chmod 777 /srv/docker/dhcpd
 ```
 
 Copy the dhcpd.conf file to the configuration directory.
@@ -79,7 +87,7 @@ Copy the dhcpd.conf file to the configuration directory.
 cp dhcpd.conf /srv/docker/dhcpd/
 ```
 
-Create the DHCPD container but don't start it until the following step is complete.
+Create the DHCPD container but don't start it until the step following this one is complete.
 ```
 docker create \
 --interactive \
@@ -110,26 +118,25 @@ The RAC node container will be used for the grid infrastructure and database sof
 
 Create the RAC node image.
 ```
-docker build --tag giready Dockerfile-bind
+docker build --tag giready Dockerfile-racnode
 ```
 
-Create the RAC node container. The `/oracledata/stage` directory holds the Oracle installation files. The `/sys/fs/cgroup` directory is necessary for systemd to run in the containers. The grid installation will fail without at least 1.5GB of shared memory. I set this container to 2GB.
+Create the RAC node container. The `/oracledata/stage` directory holds the Oracle installation files. The `/sys/fs/cgroup` directory is necessary for systemd to run in the containers. The grid installation will fail without at least 1.5GB of shared memory.
 ```
 docker run \
---detach true \
---interactive true \
---privileged true \
+--detach \
+--privileged \
 --name rac1 \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---dns=10.10.10.10 \
+--dns 10.10.10.10 \
 --shm-size 2048m \
 giready \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
 ```
 
-Add the two custom networks to the RAC node container. I initially tried to use the `docker network connect` commands that were used for the DHCPD container but the name of the network adapter must be consistent in all the RAC node container and `docker network connect` does not allow you to specify an adapter name. Pipework is essentially doing exactly what `docker network connect` does with the additional abilities to specify the network interface name both inside the container and on the host as well not giving the new adapters IPs so the IPs can come from the dhcpd container which will update the bind container. Unlike the native docker network functions, the pipework virtual adapters are not deleted when the container is removed which is the reason for the `ip link delete` commands. Pipework is using the existing networks instead of creating new ones.
+Add the two custom networks to the RAC node container. I initially tried to use the `docker network connect` commands that were used for the DHCPD container but the name of the network adapter must be consistent in all the RAC node container and `docker network connect` does not allow you to specify an adapter name. Pipework is essentially doing exactly what `docker network connect` does with the additional abilities to specify the network interface name both inside the container and on the host as well not giving the new adapters IPs so the IPs can come from the dhcpd container. Unlike the native docker network functions, the pipework virtual adapters are not deleted automatically when the container is removed. There can be consequences if you are recreating your RAC containers over and over again without deleting the virtual adapters so the `ip link delete` commands were added to delete any previously existing virtual adapters before creating the new ones needed by the RAC node container. The `ip link delete` commands will error out if these virtual adapters don't yet exist. These errors can be ignored. The `Warning: arping not found` errors can also be ignored. Pipework is using the existing networks instead of creating new ones.
 ```
 sudo ip link delete rac1-pub
 sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac1-pub rac1 0.0.0.0/24
@@ -144,7 +151,7 @@ docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth2.pid eth2
 ```
 
-Add the udev rules file for the ASM disks to the RAC node container. Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of AFD.
+Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of AFD.
 
 Modify the `99-asm-disks.rules` file to reflect the devices on the host system that you have designated as ASM disks. For example, I have designated /dev/sdd, /dev/sde, and /dev/sdf as the three disks that will comprise my DATA ASM disk group.
 ```
@@ -158,24 +165,24 @@ Copy the file into the RAC node container.
 docker cp 99-asm-disks.rules rac1:/etc/udev/rules.d/
 ```
 
-Tell udev to read the new rules.
+Tell udev to read the new rules configuration.
 ```
 docker exec rac1 udevadm trigger
 ```
 
 Now my ASM disk devices look like this in the RAC node container.
 ```
-[root@rac1 /]# ll /dev/sd[d-f]
-brw-rw----. 1 root oinstall 8, 48 Oct 14 19:56 /dev/sdd
-brw-rw----. 1 root oinstall 8, 64 Oct 14 19:56 /dev/sde
-brw-rw----. 1 root oinstall 8, 80 Oct 14 19:56 /dev/sdf
-[root@rac1 /]# ll -d /dev/asmdisks/
-drwxr-xr-x. 2 root root 100 Oct 10 21:52 /dev/asmdisks/
-[root@rac1 /]# ll /dev/asmdisks/
+$ docker exec rac1 ls -l /dev/sd[d-f]
+brw-rw----. 1 root oinstall 8, 48 Oct 17 16:49 /dev/sdd
+brw-rw----. 1 root oinstall 8, 64 Oct 17 16:49 /dev/sde
+brw-rw----. 1 root oinstall 8, 80 Oct 17 16:49 /dev/sdf
+$ docker exec rac1 ls -ld /dev/asmdisks/
+drwxr-xr-x. 2 root root 100 Oct 17 16:49 /dev/asmdisks/
+$ docker exec rac1 ls -l /dev/asmdisks/
 total 0
-lrwxrwxrwx. 1 root root 6 Oct 14 19:23 asm-clu-121-DATA-disk1 -> ../sdd
-lrwxrwxrwx. 1 root root 6 Oct 14 19:53 asm-clu-121-DATA-disk2 -> ../sde
-lrwxrwxrwx. 1 root root 6 Oct 14 19:53 asm-clu-121-DATA-disk3 -> ../sdf
+lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk1 -> ../sdd
+lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk2 -> ../sde
+lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk3 -> ../sdf
 ```
 
 Connect to the RAC node container and execute the grid infrastructure installer. This will install the grid software only.
@@ -196,7 +203,7 @@ GRID_HOME=/u01/app/12.1.0/grid
 "oracle.install.asm.OSASM=asmadmin"
 ```
 
-Run the two root scripts as root.
+Run the two root scripts as root in the RAC node container.
 ```
 /u01/app/oraInventory/orainstRoot.sh
 /u01/app/12.1.0/grid/root.sh
