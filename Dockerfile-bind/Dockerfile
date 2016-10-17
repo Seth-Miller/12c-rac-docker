@@ -36,3 +36,7 @@ COPY ["db.11.11.11", "/etc/bind/"]
 
 # Overwrite named.conf to include keys.conf and named.conf.custom-zones
 COPY ["named.conf", "/etc/bind/"]
+
+
+# Copy the key files
+RUN cp /etc/keys/Kdnsupdate.* /etc/bind/
