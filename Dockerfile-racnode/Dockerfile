@@ -69,4 +69,5 @@ RUN ["chmod", "4755", "/bin/ping"]
 
 
 # SELinux bug fix
+RUN ["mkdir", "-p", "/etc/selinux/targeted/contexts/"]
 RUN ["echo", "'<busconfig><selinux></selinux></busconfig>'", "> /etc/selinux/targeted/contexts/dbus_contexts"]
