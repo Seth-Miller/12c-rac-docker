@@ -49,8 +49,8 @@ RUN ["useradd", "--create-home", "--uid", "54421", "--gid", "oinstall", "--group
 
 
 # Give grid and oracle users passwords
-RUN ["echo", "grid:${GRID_PASSWORD}", "|", "chpasswd"]
-RUN ["echo", "oracle:${ORACLE_PASSWORD}", "|", "chpasswd"]
+RUN echo "grid:${GRID_PASSWORD}" | chpasswd
+RUN echo "oracle:${ORACLE_PASSWORD}" | chpasswd
 
 
 # Add ulimits configuration file for grid user
