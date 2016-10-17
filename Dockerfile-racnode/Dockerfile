@@ -35,6 +35,10 @@ RUN ["yum", "-y", "install", \
        "tar"]
 
 
+# Clean the yum cache
+RUN ["yum", "clean", "all"]
+
+
 # Add groups for grid infrastructure
 RUN ["groupadd", "--gid", "54421", "asmdba"]
 RUN ["groupadd", "--gid", "54422", "asmadmin"]
