@@ -6,6 +6,8 @@ This setup uses block devices for the ASM disks. I would recommend three disks t
 
 It is important when creating the BIND and DHCPD containers that the BIND container is created first. The reason is that there is a key created as part of the BIND image build that DHCPD will use for dynamic dns updates and the key needs to exist when the DHCPD container is created.
 
+The passwords for the non-privileged user accounts are all set to `oracle_4U`.
+
 
 # Pipework
 The RAC containers use a script called pipework to connect the custom docker networks to the containers. Because the pipework script is working with network namespaces, it must be run as root.
@@ -148,7 +150,7 @@ sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i et
 Start dhclient for each of the newly added networks. The IPs will come from the dhcpd container which will update the bind container.
 ```
 docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
-docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth2.pid eth2
+docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
 ```
 
 Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of AFD.
@@ -186,6 +188,18 @@ lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk3 -> ../sdf
 ```
 
 Connect to the RAC node container and execute the grid infrastructure installer. This will install the grid software only.
+
+#### Bug
+There is currently a bug that is delaying the systemd startup process which means that systemd won't return a runlevel for up to a few minutes after the container has been started. If you execute the grid infrastructure installer before systemd has started, the installer will return an error that looks like this.
+```
+INFO: *********************************************
+INFO: Run Level: This is a prerequisite condition to test whether the system is running with proper run level.
+INFO: Severity:CRITICAL
+INFO: OverallStatus:OPERATION_FAILED
+```
+If this happens, simply restart the grid infrastructure installer. If you want to be sure systemd is done starting up, you can run the command `runlevel` which should return `N 3` or `N 5`.
+
+During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
 docker exec -it rac1 bash
 su - grid
@@ -209,7 +223,7 @@ Run the two root scripts as root in the RAC node container.
 /u01/app/12.1.0/grid/root.sh
 ```
 
-Exit the rac node container and create a new image of the RAC node container which will be used as the base of all of the RAC node containers.
+Exit the RAC node container and create a new image which will be used as the base of any additional RAC node containers.
 ```
 docker commit rac1 giinstalled
 ```
@@ -219,14 +233,13 @@ Create a new RAC node container from the image you just created or just skip thi
 docker rm -f rac1
 
 docker run \
---detach true \
---interactive true \
---privileged true \
+--detach \
+--privileged \
 --name rac1 \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---dns=10.10.10.10 \
+--dns 10.10.10.10 \
 --shm-size 2048m \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
@@ -241,20 +254,19 @@ sudo ip link delete rac1-priv
 sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac1-priv rac1 0.0.0.0/24
 
 docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
-docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth2.pid eth2
+docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
 ```
 
 Create a second RAC node container.
 ```
 docker run \
---detach true \
---interactive true \
---privileged true \
+--detach \
+--privileged \
 --name rac2 \
 --hostname rac2 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---dns=10.10.10.10 \
+--dns 10.10.10.10 \
 --shm-size 2048m \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
@@ -269,7 +281,7 @@ sudo ip link delete rac2-priv
 sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac2-priv rac2 0.0.0.0/24
 
 docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth1.pid eth1
-docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth2.pid eth2
+docker exec rac2 dhclient -H rac2-priv -pf /var/run/dhclient-eth2.pid eth2
 ```
 
 Populate the known_hosts file on each RAC node container with the other container's signature.
