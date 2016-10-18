@@ -198,6 +198,7 @@ INFO: Severity:CRITICAL
 INFO: OverallStatus:OPERATION_FAILED
 ```
 If this happens, simply restart the grid infrastructure installer. If you want to be sure systemd is done starting up, you can run the command `runlevel` which should return `N 3` or `N 5`.
+***
 
 During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
