@@ -284,18 +284,14 @@ docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac2 dhclient -H rac2-priv -pf /var/run/dhclient-eth2.pid eth2
 ```
 
-Populate the known_hosts file on each RAC node container with the other container's signature.
+Configure shared key SSH authentication among all RAC node containers.
 ```
-docker exec rac1 su - grid -c "ssh rac1 date"
-
-docker exec rac1 su - grid -c "ssh rac2 date"
-
-docker exec rac2 su - grid -c "ssh rac1 date"
-
-docker exec rac2 su - grid -c "ssh rac2 date"
+./fixssh.sh rac1 rac2
 ```
 
 Connect to the first RAC node container and configure the installed grid infrastructure. Modify the `oracle.install.asm.diskGroup.disks` and `oracle.install.asm.diskGroup.diskDiscoveryString` parameters to match the ASM block devices from the host.
+
+During the configuration, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
 docker exec -it rac1 bash
 su - grid
@@ -320,7 +316,7 @@ ${GRID_HOME?}/crs/config/config.sh -ignoreSysPrereqs -silent \
 "oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS" \
 "oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com" \
 "oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com" \
-"oracle.install.crs.config.clusterNodes=rac1:AUTO,rac2:AUTO" \
+"oracle.install.crs.config.clusterNodes=rac1.example.com:AUTO,rac2.example.com:AUTO" \
 "oracle.install.crs.config.networkInterfaceList=eth1:10.10.10.0:1,eth2:11.11.11.0:2" \
 "oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE" \
 "oracle.install.crs.config.useIPMI=false" \
