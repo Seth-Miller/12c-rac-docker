@@ -1,0 +1,93 @@
+#cloud-config
+
+
+# Hostname of your CoreOS VM
+hostname: mycoreos
+
+
+# Stores the public key for SSH shared-key authentication, update with your SSH RSA public key
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1...
+
+
+coreos:
+  units:
+
+# Creates an LVM thinpool for Docker storage, will only run if the logical volume does not exist
+# Change /dev/sdb to the disk you want to use for Docker storage
+    - name: create-docker-lvm-thinpool.service
+      command: start
+      content: |
+        [Unit]
+        After=lvm2-monitor.service
+        Requires=lvm2-monitor.service
+        ConditionPathExists=!/dev/mapper/docker-thinpool
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/sbin/pvcreate /dev/sdb
+        ExecStart=/usr/sbin/vgcreate docker /dev/sdb
+        ExecStart=/usr/sbin/lvcreate --wipesignatures y -n thinpool docker -l 95%VG
+        ExecStart=/usr/sbin/lvcreate --wipesignatures y -n thinpoolmeta docker -l 1%VG
+        ExecStart=/usr/sbin/lvconvert -y --zero n -c 512K --thinpool docker/thinpool --poolmetadata docker/thinpoolmeta
+        ExecStart=/usr/sbin/lvchange --metadataprofile docker-thinpool docker/thinpool
+
+
+# Updates the systemd Docker service to use Direct LVM storage and changes the container size to 25GB
+# Requires the LVM thinpool from the previous unit exists
+    - name: docker.service
+      drop-ins:
+        - name: 10.docker_opts.conf
+          content: |
+            [Service]
+            Environment="DOCKER_OPTS=--storage-driver=devicemapper --storage-opt=dm.thinpooldev=/dev/mapper/docker-thinpool --storage-opt dm.use_deferred_removal=true --storage-opt dm.basesize=25G"
+
+
+# Creates a new LVM volume and file system for storing installation files, will only run if the logical volume does not exist
+# Change /dev/sdc to the disk you want to use for installation files
+    - name: create-oracledata-volume.service
+      command: start
+      content: |
+        [Unit]
+        Description=Create oracledata logical volume and create an ext4 filesystem
+        After=lvm2-activation.service
+        Requires=lvm2-activation.service
+        ConditionPathExists=!/dev/mapper/data-oracledata
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/sbin/pvcreate /dev/sdc
+        ExecStart=/usr/sbin/vgcreate data /dev/sdc
+        ExecStart=/usr/sbin/lvcreate -y -n oracledata data -l 30%VG
+        ExecStart=/usr/sbin/mkfs.ext4 /dev/mapper/data-oracledata
+
+
+# Mounts the file system for storing installation files from previous unit
+    - name: oracledata.mount
+      command: start
+      content: |
+        [Unit]
+        Description=Mount oracledata volume to /oracledata
+        Requires=dev-mapper-data\x2doracledata.device
+        After=dev-mapper-data\x2doracledata.device
+        [Mount]
+        What=/dev/mapper/data-oracledata
+        Where=/oracledata
+        Type=ext4
+
+
+write_files:
+
+# Required for the Docker storage LVM thinpool
+  - path: /etc/lvm/profile/docker-thinpool.profile
+    permissions: 0644
+    owner: root
+    content: |
+      activation {
+          thin_pool_autoextend_threshold=80
+          thin_pool_autoextend_percent=20
+      }
+
+
+# Add bash profile preferences
+  - path: /etc/profile.env
+    content: |
+      alias ll='ls -l --color=auto'
