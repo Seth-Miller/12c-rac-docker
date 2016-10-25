@@ -10,6 +10,7 @@ The passwords for the non-privileged user accounts are all set to `oracle_4U`.
 
 This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions.
 
+
 # Pipework
 The RAC containers use a script called pipework to connect the custom docker networks to the containers. Because the pipework script is working with network namespaces, it must be run as root.
 ```
