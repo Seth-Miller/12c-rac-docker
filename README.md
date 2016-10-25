@@ -2,12 +2,13 @@
 Multiple node Oracle RAC cluster running in Docker containers.
 
 # How to use
-This setup uses block devices for the ASM disks. I would recommend three disks that are at least 4GB each in size.
+This setup uses block devices for the ASM disks. The recommendation is to use three disks that are at least 4GB each in size.
 
 It is important when creating the BIND and DHCPD containers that the BIND container is created first. The reason is that there is a key created as part of the BIND image build that DHCPD will use for dynamic dns updates and the key needs to exist when the DHCPD container is created.
 
 The passwords for the non-privileged user accounts are all set to `oracle_4U`.
 
+This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions.
 
 # Pipework
 The RAC containers use a script called pipework to connect the custom docker networks to the containers. Because the pipework script is working with network namespaces, it must be run as root.
