@@ -373,7 +373,7 @@ docker exec rac1 su - grid -c ' \
 "oracle.install.crs.config.useIPMI=false" \
 "oracle.install.asm.SYSASMPassword=oracle_4U" \
 "oracle.install.asm.monitorPassword=oracle_4U" \
-"oracle.install.asm.diskGroup.name=DATAC1" \
+"oracle.install.asm.diskGroup.name=DATA" \
 "oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
 "oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
 "oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
@@ -399,6 +399,31 @@ docker exec rac1 su - grid -c '/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCom
 Delete the configuration assistant response file.
 ```
 docker exec rac1 rm -f /tmp/tools_config.rsp
+```
+
+Optionally, create a database.
+```
+docker exec rac1 su - oracle -c ' \
+/u01/app/oracle/product/12.1.0/dbhome_1/bin/dbca -createDatabase -silent \
+-templateName General_Purpose.dbc \
+-gdbName orcl \
+-sysPassword oracle_4U \
+-systemPassword oracle_4U \
+-storageType ASM \
+-diskGroupName DATA \
+-recoveryGroupName DATA \
+-characterSet AL32UTF8 \
+-nationalCharacterSet UTF8 \
+-totalMemory 1024 \
+-emConfiguration none \
+-nodelist rac1,rac2 \
+-createAsContainerDatabase True \
+-databaseConfType RAC'
+```
+
+Confirm the resources are running.
+```
+docker exec rac1 /u01/app/12.1.0/grid/bin/crsctl status resource -t
 ```
 
 ***
