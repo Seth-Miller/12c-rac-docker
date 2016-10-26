@@ -26,6 +26,24 @@ sudo chmod 744 /srv/docker/pipework/pipework
 Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage`.
 
 
+# ASM
+Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of ASM Filter Driver (AFD).
+
+Modify the `99-asm-disks.rules` file to reflect the devices on the host system that you have designated as ASM disks. For example, I have designated /dev/sdd, /dev/sde, and /dev/sdf as the three disks that will be used in my DATA ASM disk group.
+```
+KERNEL=="sdd", SYMLINK+="asmdisks/asm-clu-121-DATA-disk1", GROUP="54321"
+KERNEL=="sde", SYMLINK+="asmdisks/asm-clu-121-DATA-disk2", GROUP="54321"
+KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
+```
+
+NFS is used in the RAC node containers for the NDATA ASM disk group which uses file devices over NFS. The directory on the host OS that will be shared across the RAC node containers is `/oraclenfs`. Create three files on the host OS using `dd`.
+```
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk1 bs=2048k count=1000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk2 bs=2048k count=1000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk3 bs=2048k count=1000
+```
+
+
 # Networks
 
 The BIND, DHCPD, and RAC containers communicate over a 10.10.10.0/24 network. This is known within the cluster as the public network.
@@ -186,16 +204,7 @@ docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
 ```
 
-Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of AFD.
-
-Modify the `99-asm-disks.rules` file to reflect the devices on the host system that you have designated as ASM disks. For example, I have designated /dev/sdd, /dev/sde, and /dev/sdf as the three disks that will comprise my DATA ASM disk group.
-```
-KERNEL=="sdd", SYMLINK+="asmdisks/asm-clu-121-DATA-disk1", GROUP="54321"
-KERNEL=="sde", SYMLINK+="asmdisks/asm-clu-121-DATA-disk2", GROUP="54321"
-KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
-```
-
-Copy the file into the RAC node container.
+Copy the udev configuration file for the ASM disks into the RAC node container.
 ```
 docker cp 99-asm-disks.rules rac1:/etc/udev/rules.d/
 ```
