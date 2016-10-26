@@ -102,7 +102,7 @@ coreos:
 
 
 # Mounts the file system for using NFS files for an ASM disk group from previous unit
-    - name: oracledata.mount
+    - name: oraclenfs.mount
       command: start
       content: |
         [Unit]
