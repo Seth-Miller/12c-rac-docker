@@ -220,7 +220,6 @@ lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk2 -> ../sde
 lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk3 -> ../sdf
 ```
 
-Connect to the RAC node container and execute the grid infrastructure installer. This will install the grid software only.
 ***
 #### Bug
 There is currently a bug that is delaying the systemd startup process which means that systemd won't return a runlevel for up to a few minutes after the container has been started. If you execute the grid infrastructure installer before systemd has started, the installer will return an error that looks like this.
@@ -232,6 +231,8 @@ INFO: OverallStatus:OPERATION_FAILED
 ```
 If this happens, simply restart the grid infrastructure installer. If you want to be sure systemd is done starting up, you can run the command `runlevel` which should return `N 3` or `N 5`.
 ***
+
+Connect to the RAC node container and execute the grid infrastructure installer. This will install the grid software only.
 
 During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
