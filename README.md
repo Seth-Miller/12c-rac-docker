@@ -66,6 +66,21 @@ bind \
 -4
 ```
 
+Alternatively, pull the bind image that has already been built.
+```
+docker create \
+--interactive \
+--tty \
+--name bind \
+--hostname bind \
+--publish 53:53/tcp \
+--publish 53:53/udp \
+--volume /srv/docker/bind:/data \
+--env WEBMIN_ENABLED=false \
+sethmiller/bind \
+-4
+```
+
 Connect the 10.10.10.0/24 network to the BIND container.
 ```
 docker network connect --ip 10.10.10.10 pub bind
@@ -74,6 +89,7 @@ docker network connect --ip 10.10.10.10 pub bind
 Start the BIND container.
 ```
 docker start bind
+docker restart bind
 ```
 
 
@@ -137,6 +153,21 @@ docker run \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giready \
+/usr/lib/systemd/systemd --system --unit=multi-user.target
+```
+
+Alternatively, pull the RAC node image that has already been built.
+```
+docker run \
+--detach \
+--privileged \
+--name rac1 \
+--hostname rac1 \
+--volume /oracledata/stage:/stage \
+--volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--dns 10.10.10.10 \
+--shm-size 2048m \
+sethmiller/giready \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
 ```
 
@@ -204,26 +235,44 @@ If this happens, simply restart the grid infrastructure installer. If you want t
 
 During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
-docker exec -it rac1 bash
-su - grid
-
-GRID_HOME=/u01/app/12.1.0/grid
-
+docker exec rac1 su - grid -c ' \
 /stage/grid/runInstaller -ignoreSysPrereqs -silent -force \
 "INVENTORY_LOCATION=/u01/app/oraInventory" \
 "UNIX_GROUP_NAME=oinstall" \
 "ORACLE_HOME=/u01/app/12.1.0/grid" \
-"ORACLE_BASE=/u01/app/oracle" \
+"ORACLE_BASE=/u01/app/grid" \
 "oracle.install.option=CRS_SWONLY" \
 "oracle.install.asm.OSDBA=asmdba" \
 "oracle.install.asm.OSOPER=" \
-"oracle.install.asm.OSASM=asmadmin"
+"oracle.install.asm.OSASM=asmadmin"'
 ```
 
 Run the two root scripts as root in the RAC node container.
 ```
-/u01/app/oraInventory/orainstRoot.sh
-/u01/app/12.1.0/grid/root.sh
+docker exec rac1 /u01/app/oraInventory/orainstRoot.sh
+docker exec rac1 /u01/app/12.1.0/grid/root.sh
+```
+
+Connect to the RAC node container and execute the database installer. This will install the database software only.
+```
+docker exec rac1 su - oracle -c ' \
+/stage/database/runInstaller -ignoreSysPrereqs -silent -force \
+"oracle.install.option=INSTALL_DB_SWONLY" \
+"INVENTORY_LOCATION=/u01/app/oraInventory" \
+"UNIX_GROUP_NAME=oinstall" \
+"ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1" \
+"ORACLE_BASE=/u01/app/oracle" \
+"oracle.install.db.InstallEdition=EE" \
+"oracle.install.db.DBA_GROUP=dba" \
+"oracle.install.db.BACKUPDBA_GROUP=dba" \
+"oracle.install.db.DGDBA_GROUP=dba" \
+"oracle.install.db.KMDBA_GROUP=dba" \
+"DECLINE_SECURITY_UPDATES=true"'
+```
+
+Run the root script as root in the RAC node container.
+```
+docker exec rac1 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
 ```
 
 Exit the RAC node container and create a new image which will be used as the base of any additional RAC node containers.
@@ -296,16 +345,12 @@ Connect to the first RAC node container and configure the installed grid infrast
 
 During the configuration, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
-docker exec -it rac1 bash
-su - grid
-
-GRID_HOME=/u01/app/12.1.0/grid
-
-${GRID_HOME?}/crs/config/config.sh -ignoreSysPrereqs -silent \
+docker exec rac1 su - grid -c ' \
+/u01/app/12.1.0/grid/crs/config/config.sh -ignoreSysPrereqs -silent \
 "INVENTORY_LOCATION=/u01/app/oraInventory" \
 "SELECTED_LANGUAGES=en" \
 "oracle.install.option=CRS_CONFIG" \
-"ORACLE_BASE=/u01/app/oracle" \
+"ORACLE_BASE=/u01/app/grid" \
 "ORACLE_HOME=/u01/app/12.1.0/grid" \
 "oracle.install.asm.OSDBA=asmdba" \
 "oracle.install.asm.OSOPER=" \
@@ -329,12 +374,13 @@ ${GRID_HOME?}/crs/config/config.sh -ignoreSysPrereqs -silent \
 "oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
 "oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
 "oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
-"oracle.install.asm.useExistingDiskGroup=false"
+"oracle.install.asm.useExistingDiskGroup=false"'
 ```
 
 Run the root script as the root user on the first RAC node container, then the second. Wait for the first to complete before running the second.
 ```
-/u01/app/12.1.0/grid/root.sh
+docker exec rac1 /u01/app/12.1.0/grid/root.sh
+docker exec rac2 /u01/app/12.1.0/grid/root.sh
 ```
 
 Copy the configuration assistant response file into the first RAC node container. Change the passwords in the file if necessary before copying.
@@ -344,14 +390,19 @@ docker cp tools_config.rsp rac1:/tmp/
 
 Run the configuration assistant on the first RAC node container only.
 ```
-su - grid
-
-GRID_HOME=/u01/app/12.1.0/grid
-
-${GRID_HOME?}/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/tmp/tools_config.rsp
+docker exec rac1 su - grid -c '/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/tmp/tools_config.rsp'
 ```
 
-Disconnect from the RAC node container and delete the configuration assistant response file.
+Delete the configuration assistant response file.
 ```
 docker exec rac1 rm -f /tmp/tools_config.rsp
+```
+
+***
+If the ASM disks have existing headers that you want to clear, use dd to wipe out the headers.
+!!!WARNING!!! This will destroy these disks and anything on them. Make sure you are clearing the right disks.
+```
+for i in sdd sde sdf; do
+  sudo dd if=/dev/zero of=/dev/$i bs=100M count=1
+done
 ```
