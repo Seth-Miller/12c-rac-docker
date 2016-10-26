@@ -255,6 +255,8 @@ docker exec rac1 /u01/app/12.1.0/grid/root.sh
 ```
 
 Connect to the RAC node container and execute the database installer. This will install the database software only.
+
+During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
 docker exec rac1 su - oracle -c ' \
 /stage/database/runInstaller -ignoreSysPrereqs -silent -force \
