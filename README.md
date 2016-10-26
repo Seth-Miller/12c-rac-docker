@@ -221,7 +221,7 @@ lrwxrwxrwx. 1 root root 6 Oct 17 16:49 asm-clu-121-DATA-disk3 -> ../sdf
 ```
 
 Connect to the RAC node container and execute the grid infrastructure installer. This will install the grid software only.
-
+***
 #### Bug
 There is currently a bug that is delaying the systemd startup process which means that systemd won't return a runlevel for up to a few minutes after the container has been started. If you execute the grid infrastructure installer before systemd has started, the installer will return an error that looks like this.
 ```
