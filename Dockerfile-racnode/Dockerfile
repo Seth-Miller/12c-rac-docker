@@ -48,6 +48,10 @@ RUN ["groupadd", "--gid", "54422", "asmadmin"]
 RUN ["useradd", "--create-home", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,asmadmin", "grid"]
 
 
+# Add groups to database home owner
+RUN ["usermod", "--append", "--groups", "asmdba", "oracle"]
+
+
 # Give grid and oracle users passwords
 RUN echo "grid:${GRID_PASSWORD}" | chpasswd
 RUN echo "oracle:${ORACLE_PASSWORD}" | chpasswd
