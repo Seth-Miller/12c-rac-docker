@@ -7,7 +7,7 @@ hostname: mycoreos
 
 # Stores the public key for SSH shared-key authentication, update with your SSH RSA public key
 ssh_authorized_keys:
-  - ssh-rsa AAAAB3NzaC1...
+  - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAA...
 
 
 coreos:
@@ -42,20 +42,32 @@ coreos:
             Environment="DOCKER_OPTS=--storage-driver=devicemapper --storage-opt=dm.thinpooldev=/dev/mapper/docker-thinpool --storage-opt dm.use_deferred_removal=true --storage-opt dm.basesize=25G"
 
 
+# Creates a new LVM volume group for custom logical volumes, will only run if the volume group does not exist
+# Change /dev/sdc to the disk you want to use for the data volume group
+    - name: create-data-volume-group.service
+      command: start
+      content: |
+        [Unit]
+        Description=Create data volume group
+        After=lvm2-activation.service
+        Requires=lvm2-activation.service
+        ConditionPathExists=/etc/check_vg.sh
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh /etc/check_vg.sh data /dev/sdc
+
+
 # Creates a new LVM volume and file system for storing installation files, will only run if the logical volume does not exist
-# Change /dev/sdc to the disk you want to use for installation files
     - name: create-oracledata-volume.service
       command: start
       content: |
         [Unit]
         Description=Create oracledata logical volume and create an ext4 filesystem
-        After=lvm2-activation.service
-        Requires=lvm2-activation.service
+        After=create-data-volume-group.service
+        Requires=create-data-volume-group.service
         ConditionPathExists=!/dev/mapper/data-oracledata
         [Service]
         Type=oneshot
-        ExecStart=/usr/sbin/pvcreate /dev/sdc
-        ExecStart=/usr/sbin/vgcreate data /dev/sdc
         ExecStart=/usr/sbin/lvcreate -y -n oracledata data -l 30%VG
         ExecStart=/usr/sbin/mkfs.ext4 /dev/mapper/data-oracledata
 
@@ -74,7 +86,46 @@ coreos:
         Type=ext4
 
 
+# Creates a new LVM volume and file system for using NFS files for an ASM disk group, will only run if the logical volume does not exist
+    - name: create-oraclenfs-volume.service
+      command: start
+      content: |
+        [Unit]
+        Description=Create oraclenfs logical volume and create an ext4 filesystem
+        After=create-data-volume-group.service
+        Requires=create-data-volume-group.service
+        ConditionPathExists=!/dev/mapper/data-oraclenfs
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/sbin/lvcreate -y -n oraclenfs data -l 30%VG
+        ExecStart=/usr/sbin/mkfs.ext4 /dev/mapper/data-oraclenfs
+
+
+# Mounts the file system for using NFS files for an ASM disk group from previous unit
+    - name: oraclenfs.mount
+      command: start
+      content: |
+        [Unit]
+        Description=Mount oraclenfs volume to /oraclenfs
+        Requires=dev-mapper-data\x2doraclenfs.device
+        After=dev-mapper-data\x2doraclenfs.device
+        [Mount]
+        What=/dev/mapper/data-oraclenfs
+        Where=/oraclenfs
+        Type=ext4
+
+
 write_files:
+
+# Required for the volume group check
+  - path: /etc/check_vg.sh
+    owner: root
+    content: |
+      if ! $(/usr/sbin/vgs $1 >/dev/null 2>&1); then
+        /usr/sbin/pvcreate $2
+        /usr/sbin/vgcreate $1 $2
+        /usr/sbin/vgs $1 >/dev/null 2>&1
+      fi
 
 # Required for the Docker storage LVM thinpool
   - path: /etc/lvm/profile/docker-thinpool.profile
