@@ -39,7 +39,7 @@ coreos:
         - name: 10.docker_opts.conf
           content: |
             [Service]
-            Environment="DOCKER_OPTS=--storage-driver=devicemapper --storage-opt=dm.thinpooldev=/dev/mapper/docker-thinpool --storage-opt dm.use_deferred_removal=true --storage-opt dm.basesize=25G"
+            Environment="DOCKER_OPTS=--storage-driver=devicemapper --storage-opt=dm.thinpooldev=/dev/mapper/docker-thinpool --storage-opt=dm.use_deferred_removal=true --storage-opt=dm.basesize=25G"
 
 
 # Creates a new LVM volume group for custom logical volumes, will only run if the volume group does not exist
