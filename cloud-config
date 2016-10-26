@@ -51,10 +51,10 @@ coreos:
         Description=Create data volume group
         After=lvm2-activation.service
         Requires=lvm2-activation.service
-        ConditionPathExists=/sbin/check_vg.sh
+        ConditionPathExists=/etc/check_vg.sh
         [Service]
         Type=oneshot
-        ExecStart=/bin/sh /sbin/check_vg.sh test /dev/sdc
+        ExecStart=/bin/sh /etc/check_vg.sh test /dev/sdc
 
 
 # Creates a new LVM volume and file system for storing installation files, will only run if the logical volume does not exist
@@ -118,7 +118,7 @@ coreos:
 write_files:
 
 # Required for the volume group check
-  - path: /sbin/check_vg.sh
+  - path: /etc/check_vg.sh
     owner: root
     content: |
       if ! $(/usr/sbin/vgs $1 >/dev/null 2>&1); then
