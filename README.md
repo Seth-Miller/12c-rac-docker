@@ -8,7 +8,7 @@ It is important when creating the BIND and DHCPD containers that the BIND contai
 
 The passwords for the non-privileged user accounts are all set to `oracle_4U`.
 
-This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions.
+This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions on how to use CoreOS to build this project.
 
 
 # Pipework
