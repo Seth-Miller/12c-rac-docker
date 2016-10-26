@@ -141,13 +141,26 @@ networkboot/dhcpd
 Connect the pub and priv docker networks to the DHCPD container.
 ```
 docker network connect --ip 10.10.10.11 pub dhcpd 
-
 docker network connect --ip 11.11.11.11 priv dhcpd 
 ```
 
 Start the DHCPD container.
 ```
 docker start dhcpd
+```
+
+
+# NFS
+The NFS server will share a host OS directory with the RAC node containers over NFS. The NFS server will be connected to the RAC node containers through a Docker link.
+
+Create the NFS container.
+```
+docker run \
+--detach \
+--privileged \
+--name nfs \
+cpuguy83/nfs-server \
+/oraclenfs
 ```
 
 
@@ -168,6 +181,7 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giready \
@@ -183,6 +197,7 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 sethmiller/giready \
@@ -303,6 +318,7 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giinstalled \
@@ -330,6 +346,7 @@ docker run \
 --hostname rac2 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+--link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giinstalled \
