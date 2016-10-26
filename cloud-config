@@ -54,7 +54,7 @@ coreos:
         ConditionPathExists=/etc/check_vg.sh
         [Service]
         Type=oneshot
-        ExecStart=/bin/sh /etc/check_vg.sh test /dev/sdc
+        ExecStart=/bin/sh /etc/check_vg.sh data /dev/sdc
 
 
 # Creates a new LVM volume and file system for storing installation files, will only run if the logical volume does not exist
