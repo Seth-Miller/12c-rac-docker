@@ -1,0 +1,7 @@
+[Unit]
+Description=Mount oraclenfs NFS volume to /oraclenfs
+
+[Mount]
+What=nfs:/oraclenfs
+Where=/oraclenfs
+Type=nfs
