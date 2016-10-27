@@ -38,9 +38,12 @@ KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
 
 NFS is used in the RAC node containers for the NDATA ASM disk group which uses file devices over NFS. The directory on the host OS that will be shared across the RAC node containers is `/oraclenfs`. Create three files on the host OS using `dd`.
 ```
-sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk1 bs=2048k count=1000
-sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk2 bs=2048k count=1000
-sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk3 bs=2048k count=1000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk1 bs=1024k count=2000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk2 bs=1024k count=2000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk3 bs=1024k count=2000
+
+sudo chgrp 54421 /oraclenfs/asm*
+sudo chmod g+w /oraclenfs/asm*
 ```
 
 
@@ -470,11 +473,14 @@ docker exec rac2 systemctl daemon-reload
 docker exec rac1 systemctl start oraclenfs.mount
 docker exec rac2 systemctl start oraclenfs.mount
 
-docker exec rac1 su - grid -c "mkdg ' \
-  <dg name="NDATA" redundancy="external"> \
-  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk1"/> \
-  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk2"/> \
-  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk3"/> \
+docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd dsset '\
+/dev/asmdisks/*,/oraclenfs/asm*'"
+
+docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd mkdg '\
+  <dg name=\"NDATA\" redundancy=\"external\"> \
+  <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk1\"/> \
+  <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk2\"/> \
+  <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk3\"/> \
 </dg>'"
 ```   
 
