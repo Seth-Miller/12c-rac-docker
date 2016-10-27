@@ -1,5 +1,5 @@
 # 12c-rac-docker
-Multiple node Oracle RAC cluster running in Docker containers.
+Multiple node Oracle RAC cluster running in Docker containers. 
 
 # How to use
 This setup uses block devices for the ASM disks. The recommendation is to use three disks that are at least 4GB each in size.
