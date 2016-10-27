@@ -1,5 +1,5 @@
 # 12c-rac-docker
-Multiple node Oracle RAC cluster running in Docker containers. 
+Multiple node Oracle RAC cluster running in Docker containers.
 
 # How to use
 This setup uses block devices for the ASM disks. The recommendation is to use three disks that are at least 4GB each in size.
@@ -153,14 +153,26 @@ docker start dhcpd
 # NFS
 The NFS server will share a host OS directory with the RAC node containers over NFS. The NFS server will be connected to the RAC node containers through a Docker link.
 
+Create the configuration directory.
+```
+sudo mkdir -p /srv/docker/nfs
+sudo chmod 777 /srv/docker/nfs
+```
+
+Copy the dhcpd.conf file to the configuration directory.
+```
+cp exports /srv/docker/nfs/
+```
+
 Create the NFS container.
 ```
 docker run \
 --detach \
 --privileged \
 --name nfs \
-cpuguy83/nfs-server \
-/oraclenfs
+--volume /oraclenfs:/oraclenfs \
+--volume /srv/docker/nfs/exports:/etc/exports \
+macadmins/unfs3
 ```
 
 
@@ -446,6 +458,25 @@ docker exec rac1 su - oracle -c ' \
 -createAsContainerDatabase True \
 -databaseConfType RAC'
 ```
+
+Optionally, create the NDATA ASM disk group.
+```
+docker cp oraclenfs.mount rac1:/etc/systemd/system/
+docker cp oraclenfs.mount rac2:/etc/systemd/system/
+
+docker exec rac1 systemctl daemon-reload
+docker exec rac2 systemctl daemon-reload
+
+docker exec rac1 systemctl start oraclenfs.mount
+docker exec rac2 systemctl start oraclenfs.mount
+
+docker exec rac1 su - grid -c "mkdg ' \
+  <dg name="NDATA" redundancy="external"> \
+  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk1"/> \
+  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk2"/> \
+  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk3"/> \
+</dg>'"
+```   
 
 Confirm the resources are running.
 ```
