@@ -463,6 +463,7 @@ docker exec rac1 su - oracle -c ' \
 ```
 
 Optionally, create the NDATA ASM disk group.
+This currently isn't working because Oracle doesn't seem to like the user space NFS server.
 ```
 docker cp oraclenfs.mount rac1:/etc/systemd/system/
 docker cp oraclenfs.mount rac2:/etc/systemd/system/
