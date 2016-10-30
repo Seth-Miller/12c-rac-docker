@@ -457,7 +457,7 @@ docker exec rac1 su - oracle -c ' \
 -nationalCharacterSet UTF8 \
 -totalMemory 1024 \
 -emConfiguration none \
--nodelist rac1,rac2 \
+-nodelist rac1.example.com,rac2.example.com \
 -createAsContainerDatabase True \
 -databaseConfType RAC'
 ```
