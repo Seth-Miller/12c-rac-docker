@@ -443,6 +443,13 @@ Delete the configuration assistant response file.
 docker exec rac1 rm -f /tmp/tools_config.rsp
 ```
 
+Configure the database installations for the cluster.
+```
+docker exec rac1 su - oracle -c '/u01/app/oracle/product/12.1.0/dbhome_1/addnode/addnode.sh -silent -ignoreSysPrereqs -noCopy CLUSTER_NEW_NODES={rac2}'
+docker exec rac1 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+docker exec rac2 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+```
+
 Optionally, create a database.
 ```
 docker exec rac1 su - oracle -c ' \
@@ -459,8 +466,7 @@ docker exec rac1 su - oracle -c ' \
 -totalMemory 1024 \
 -emConfiguration none \
 -nodelist rac1.example.com,rac2.example.com \
--createAsContainerDatabase True \
--databaseConfType RAC'
+-createAsContainerDatabase True'
 ```
 
 Optionally, create the NDATA ASM disk group.
