@@ -309,6 +309,7 @@ docker exec rac1 su - oracle -c ' \
 "oracle.install.db.BACKUPDBA_GROUP=dba" \
 "oracle.install.db.DGDBA_GROUP=dba" \
 "oracle.install.db.KMDBA_GROUP=dba" \
+"oracle.install.db.CLUSTER_NODES=rac1.example.com" \
 "DECLINE_SECURITY_UPDATES=true"'
 ```
 
