@@ -196,7 +196,6 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giready \
@@ -212,7 +211,6 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 sethmiller/giready \
@@ -334,7 +332,6 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giinstalled \
@@ -362,7 +359,6 @@ docker run \
 --hostname rac2 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giinstalled \
