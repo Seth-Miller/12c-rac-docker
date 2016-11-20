@@ -38,9 +38,12 @@ KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
 
 NFS is used in the RAC node containers for the NDATA ASM disk group which uses file devices over NFS. The directory on the host OS that will be shared across the RAC node containers is `/oraclenfs`. Create three files on the host OS using `dd`.
 ```
-sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk1 bs=2048k count=1000
-sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk2 bs=2048k count=1000
-sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk3 bs=2048k count=1000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk1 bs=1024k count=2000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk2 bs=1024k count=2000
+sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk3 bs=1024k count=2000
+
+sudo chgrp 54421 /oraclenfs/asm*
+sudo chmod g+w /oraclenfs/asm*
 ```
 
 
@@ -159,20 +162,24 @@ sudo mkdir -p /srv/docker/nfs
 sudo chmod 777 /srv/docker/nfs
 ```
 
-Copy the dhcpd.conf file to the configuration directory.
+Copy the ganesha.conf file to the configuration directory.
 ```
-cp exports /srv/docker/nfs/
+cp ganesha.conf /srv/docker/nfs/
 ```
 
 Create the NFS container.
 ```
 docker run \
+--interactive \
+--tty \
 --detach \
 --privileged \
 --name nfs \
+--hostname nfs \
+--volume /srv/docker/nfs:/etc/ganesha \
 --volume /oraclenfs:/oraclenfs \
---volume /srv/docker/nfs/exports:/etc/exports \
-macadmins/unfs3
+--dns 10.10.10.10 \
+sethmiller/nfs
 ```
 
 
@@ -193,7 +200,6 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 giready \
@@ -209,7 +215,6 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
 --shm-size 2048m \
 sethmiller/giready \
@@ -306,6 +311,7 @@ docker exec rac1 su - oracle -c ' \
 "oracle.install.db.BACKUPDBA_GROUP=dba" \
 "oracle.install.db.DGDBA_GROUP=dba" \
 "oracle.install.db.KMDBA_GROUP=dba" \
+"oracle.install.db.CLUSTER_NODES=rac1.example.com" \
 "DECLINE_SECURITY_UPDATES=true"'
 ```
 
@@ -319,7 +325,7 @@ Exit the RAC node container and create a new image which will be used as the bas
 docker commit rac1 giinstalled
 ```
 
-Create a new RAC node container from the image you just created or just skip this step and continue using the same container.
+Create a new RAC node container from the image you just created.
 ```
 docker rm -f rac1
 
@@ -330,8 +336,8 @@ docker run \
 --hostname rac1 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
+--link nfs:nfs \
 --shm-size 2048m \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
@@ -358,8 +364,8 @@ docker run \
 --hostname rac2 \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---link nfs:nfs \
 --dns 10.10.10.10 \
+--link nfs:nfs \
 --shm-size 2048m \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
@@ -439,6 +445,13 @@ Delete the configuration assistant response file.
 docker exec rac1 rm -f /tmp/tools_config.rsp
 ```
 
+Configure the database installations for the cluster.
+```
+docker exec rac1 su - oracle -c '/u01/app/oracle/product/12.1.0/dbhome_1/addnode/addnode.sh -silent -ignoreSysPrereqs -noCopy CLUSTER_NEW_NODES={rac2}'
+docker exec rac1 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+docker exec rac2 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+```
+
 Optionally, create a database.
 ```
 docker exec rac1 su - oracle -c ' \
@@ -454,12 +467,12 @@ docker exec rac1 su - oracle -c ' \
 -nationalCharacterSet UTF8 \
 -totalMemory 1024 \
 -emConfiguration none \
--nodelist rac1,rac2 \
--createAsContainerDatabase True \
--databaseConfType RAC'
+-nodelist rac1.example.com,rac2.example.com \
+-createAsContainerDatabase True'
 ```
 
 Optionally, create the NDATA ASM disk group.
+This currently isn't working because Oracle doesn't seem to like the user space NFS server.
 ```
 docker cp oraclenfs.mount rac1:/etc/systemd/system/
 docker cp oraclenfs.mount rac2:/etc/systemd/system/
@@ -470,11 +483,14 @@ docker exec rac2 systemctl daemon-reload
 docker exec rac1 systemctl start oraclenfs.mount
 docker exec rac2 systemctl start oraclenfs.mount
 
-docker exec rac1 su - grid -c "mkdg ' \
-  <dg name="NDATA" redundancy="external"> \
-  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk1"/> \
-  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk2"/> \
-  <dsk string="/oraclenfs/asm-clu-121-NDATA-disk3"/> \
+docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd dsset '\
+/dev/asmdisks/*,/oraclenfs/asm*'"
+
+docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd mkdg '\
+  <dg name=\"NDATA\" redundancy=\"external\"> \
+  <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk1\"/> \
+  <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk2\"/> \
+  <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk3\"/> \
 </dg>'"
 ```   
 
