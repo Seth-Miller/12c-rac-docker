@@ -162,20 +162,24 @@ sudo mkdir -p /srv/docker/nfs
 sudo chmod 777 /srv/docker/nfs
 ```
 
-Copy the dhcpd.conf file to the configuration directory.
+Copy the ganesha.conf file to the configuration directory.
 ```
-cp exports /srv/docker/nfs/
+cp ganesha.conf /srv/docker/nfs/
 ```
 
 Create the NFS container.
 ```
 docker run \
+--interactive \
+--tty \
 --detach \
 --privileged \
 --name nfs \
+--hostname nfs \
+--volume /srv/docker/nfs:/etc/ganesha \
 --volume /oraclenfs:/oraclenfs \
---volume /srv/docker/nfs/exports:/etc/exports \
-macadmins/unfs3
+--dns 10.10.10.10 \
+sethmiller/nfs
 ```
 
 
@@ -321,7 +325,7 @@ Exit the RAC node container and create a new image which will be used as the bas
 docker commit rac1 giinstalled
 ```
 
-Create a new RAC node container from the image you just created or just skip this step and continue using the same container.
+Create a new RAC node container from the image you just created.
 ```
 docker rm -f rac1
 
@@ -333,6 +337,7 @@ docker run \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
 --dns 10.10.10.10 \
+--link nfs:nfs \
 --shm-size 2048m \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
@@ -360,6 +365,7 @@ docker run \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
 --dns 10.10.10.10 \
+--link nfs:nfs \
 --shm-size 2048m \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
