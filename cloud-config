@@ -142,4 +142,3 @@ write_files:
   - path: /etc/profile.env
     content: |
       alias ll='ls -l --color=auto'
-      export PATH=$PATH:/opt/bin
