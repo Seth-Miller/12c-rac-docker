@@ -14,14 +14,14 @@ Execute these steps to create the ISO on Windows.
 ```
 mkdir coreos\cloud-config\openstack\latest\
 copy cloud-config coreos\cloud-config\openstack\latest\user_data
-mkisofs.exe -R -V config-2 -o coreos/mycoreos.iso coreos/cloud-config
+mkisofs.exe -R -V config-2 -o mycoreos.iso coreos/cloud-config
 ```
 
 Execute these steps to create the ISO on Linux or Cygwin.
 ```
 mkdir -p coreos/cloud-config/openstack/latest/
 cp cloud-config coreos/cloud-config/openstack/latest/user_data
-mkisofs -R -V config-2 -o coreos/mycoreos.iso coreos/cloud-config
+mkisofs -R -V config-2 -o mycoreos.iso coreos/cloud-config
 ```
 
 
