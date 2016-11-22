@@ -32,6 +32,23 @@ coreos:
         ExecStart=/usr/sbin/lvchange --metadataprofile docker-thinpool docker/thinpool
 
 
+# Adds a TCP socket for Docker so docker can be managed remotely
+    - name: docker-tcp.socket
+      command: start
+      enable: true
+      content: |
+        [Unit]
+        Description=Docker Socket for the API
+
+        [Socket]
+        ListenStream=2375
+        BindIPv6Only=both
+        Service=docker.service
+
+        [Install]
+        WantedBy=sockets.target
+
+
 # Updates the systemd Docker service to use Direct LVM storage and changes the container size to 25GB
 # Requires the LVM thinpool from the previous unit exists
     - name: docker.service
