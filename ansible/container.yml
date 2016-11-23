@@ -1,0 +1,15 @@
+- name: Build containers
+  hosts: all
+  connection: local
+  gather_facts: False
+
+  tasks:
+    - name: Create container
+      docker_container:
+        name: mycon
+        hostname: mycon
+        image: busybox
+        state: started
+        interactive: True
+        tty: True
+        detach: True
