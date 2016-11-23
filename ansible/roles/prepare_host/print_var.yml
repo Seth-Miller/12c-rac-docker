@@ -1,0 +1,12 @@
+
+
+- hosts: all
+  gather_facts: False
+  tasks:
+    - include_vars: main.yml
+    - debug:
+        msg: "Variable {{ item[1].path }}"
+      with_subelements:
+        - "{{ asm_disk_groups }}"
+        - disks
+      when: item[1].type == "file"
