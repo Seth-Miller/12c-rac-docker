@@ -67,3 +67,17 @@ docker:
       command: "-4"
       env:
         WEBMIN_ENABLED: "false"
+
+    - name: dhcpd
+      hostname: dhcpd
+      image: networkboot/dhcpd
+      config_directory: /srv/docker/dhcpd
+      volumes:
+        - "/srv/docker/dhcpd:/data"
+        - "/srv/docker/bind/bind/etc:/keys"
+      networks:
+        - name: "pub"
+          ipv4_address: "10.10.10.11"
+        - name: "priv"
+          ipv4_address: "11.11.11.11"
+      dns: 10.10.10.10

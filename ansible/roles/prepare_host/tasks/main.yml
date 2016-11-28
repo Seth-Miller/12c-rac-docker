@@ -87,3 +87,54 @@
         command: "{{ item.command }}"
       with_items:
         - "{{ docker.containers | selectattr('name', 'equalto', 'bind') | list }}"
+      tags:
+        - create_bind_container
+        - bind
+        - docker
+
+    - name: Create DHCPD configuration directory
+      file:
+        state: directory
+        path: "{{ item.config_directory }}"
+        mode: 0777
+      become: true
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - create_dhcpd_config_dir
+        - dhcpd
+        - dhcpd_config
+        - docker
+
+    - name: Copy DHCPD configuration file
+      copy:
+        src: dhcpd.conf
+        dest: "{{ item.config_directory }}/"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - copy_dhcpd_config_file
+        - dhcpd
+        - dhcpd_config
+        - docker
+
+    - name: Create DHCPD container
+      docker_container:
+        name: dhcpd
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        interactive: True
+        tty: True
+        volumes:
+          "{{ item.volumes }}"
+        networks:
+          "{{ item.networks }}"
+        dns_servers:
+          "{{ item.dns }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - create_dhcpd_container
+        - dhcpd
+        - docker
