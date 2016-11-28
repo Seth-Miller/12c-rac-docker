@@ -1,0 +1,50 @@
+
+
+- hosts: all
+  gather_facts: False
+
+
+  tasks:
+    - include_vars: main.yml
+
+    - name: Create ASM file devices
+      file:
+        state: touch
+        path: "{{ item[1].path }}"
+        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
+        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
+      become: true
+      with_subelements:
+        - "{{ asm_disk_groups }}"
+        - disks
+      when: item[1].type == "file"
+      register: asm_disk_files
+    
+    - debug:
+        msg: ""
+      with_items:
+        - "{{ asm_disk_files.results }}"
+
+    - debug:
+        msg: "{{ item }}"
+      with_items:
+        - "{{ asm_disk_files.results }}"
+      when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
+
+    - name: Inflate ASM file devices
+      command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
+      become: true
+      with_items:
+        - "{{ asm_disk_files.results }}"
+      when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
+
+    - name: Check ASM file devices
+      file:
+        state: file
+        path: "{{ item[1].path }}"
+        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
+        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
+      with_subelements:
+        - "{{ asm_disk_groups }}"
+        - disks
+      when: item[1].type == "file"
