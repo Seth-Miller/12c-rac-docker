@@ -1,3 +1,6 @@
+
+
+
 asm_disk_groups:
   - group: DATA
     disks:
@@ -16,3 +19,23 @@ asm_disk_groups:
         type: file
       - path: /oraclenfs/asm-clu-121-NDATA-disk3
         type: file
+
+operating_system:
+  grid_infrastructure:
+    users:
+      - name: grid
+        title: owner
+        uid: 54325
+    groups:
+      - name: oinstall
+        title: inventory
+        gid: 54421
+      - name: asmdba
+        title: osdba
+        gid: 54422
+      - name: asmoper
+        title: osoper
+        gid: 54423
+      - name: asmadmin
+        title: osasm
+        gid: 54424
