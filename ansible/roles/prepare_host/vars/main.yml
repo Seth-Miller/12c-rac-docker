@@ -63,6 +63,7 @@ docker:
         - "/srv/docker/bind:/data"
       networks:
         - name: "pub"
+          ipv4_address: "10.10.10.10"
       command: "-4"
       env:
         WEBMIN_ENABLED: "false"
