@@ -3,8 +3,6 @@
       file:
         state: touch
         path: "{{ item[1].path }}"
-        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
-        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
       become: true
       with_subelements:
         - "{{ asm_disk_groups }}"
@@ -33,6 +31,8 @@
         path: "{{ item[1].path }}"
         owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
         group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
+        mode: 0660
+      become: true
       with_subelements:
         - "{{ asm_disk_groups }}"
         - disks
