@@ -41,3 +41,14 @@ operating_system:
       - name: asmadmin
         title: osasm
         gid: 54424
+
+docker:
+  networks:
+    - type: public
+      name: pub
+      subnet: 10.10.10.0
+      cidr: 24
+    - type: private
+      name: priv
+      subnet: 11.11.11.0
+      cidr: 24

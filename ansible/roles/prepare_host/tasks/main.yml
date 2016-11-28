@@ -54,3 +54,14 @@
         - check_asm_blocks
         - asm_blocks
         - asm
+
+    - name: Create Docker networks
+      docker_network:
+        name: "{{ item.name }}"
+        appends: True
+        state: present
+      with_items:
+        - "{{ docker.networks }}"
+      tags:
+        - create_docker_networks
+        - docker
