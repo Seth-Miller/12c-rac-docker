@@ -66,6 +66,11 @@ Update the `hosts: ` line of the coreos-bootstrap.yml file to reflect the CoreOS
 ansible-playbook coreos-bootstrap.yml
 ```
 
+### Install docker-py
+```
+ansible all -m pip -a "executable=/home/core/bin/pip name=docker-py"
+```
+
 Verify ansible is working with these commands.
 ```
 ansible all -m setup
