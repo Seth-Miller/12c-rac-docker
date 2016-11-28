@@ -1,0 +1,6 @@
+
+
+   - hosts: all
+     any_errors_fatal: True
+     roles:
+       - prepare_host
