@@ -67,3 +67,23 @@
       tags:
         - create_docker_networks
         - docker
+
+    - name: Create BIND container
+      docker_container:
+        name: bind
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        interactive: True
+        tty: True
+        published_ports:
+          "{{ item.ports }}"
+        volumes:
+          "{{ item.volumes }}"
+        networks:
+          "{{ item.networks }}"
+        env:
+          "{{ item.env }}"
+        command: "{{ item.command }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'bind') | list }}"

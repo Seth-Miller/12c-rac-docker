@@ -52,3 +52,17 @@ docker:
       name: priv
       subnet: 11.11.11.0
       cidr: 24
+  containers: 
+    - name: bind
+      hostname: bind
+      image: sethmiller/bind
+      ports:
+        - "53:53/tcp"
+        - "53:53/udp"
+      volumes:
+        - "/srv/docker/bind:/data"
+      networks:
+        - name: "pub"
+      command: "-4"
+      env:
+        WEBMIN_ENABLED: "false"
