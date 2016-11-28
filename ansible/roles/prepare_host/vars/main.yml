@@ -4,13 +4,15 @@
 asm_disk_groups:
   - group: DATA
     disks:
-      - path: /dev/asmdisks/asm-clu-121-DATA-disk1
+      - rawpath: /dev/sdd
+        udevpath: /dev/asmdisks/asm-clu-121-DATA-disk1
         type: block
-      - path: /dev/asmdisks/asm-clu-121-DATA-disk2
+      - rawpath: /dev/sde
+        udevpath: /dev/asmdisks/asm-clu-121-DATA-disk2
         type: block
-      - path: /dev/asmdisks/asm-clu-121-DATA-disk3
+      - rawpath: /dev/sdf
+        udevpath: /dev/asmdisks/asm-clu-121-DATA-disk3
         type: block
-
   - group: NDATA
     disks:
       - path: /oraclenfs/asm-clu-121-NDATA-disk1
