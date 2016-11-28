@@ -41,3 +41,16 @@
         - check_asm_files
         - asm_files
         - asm
+
+    - name: Check ASM block devices
+      stat:
+        path: "{{ item[1].rawpath }}"
+      with_subelements:
+        - "{{ asm_disk_groups }}"
+        - disks
+      when: item[1].type == "block"
+      register: asm_disk_blocks
+      tags:
+        - check_asm_blocks
+        - asm_blocks
+        - asm
