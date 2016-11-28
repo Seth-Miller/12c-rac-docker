@@ -60,6 +60,8 @@
         name: "{{ item.name }}"
         appends: True
         state: present
+        ipam_options:
+          subnet: "{{ item.subnet }}/{{ item.cidr }}"
       with_items:
         - "{{ docker.networks }}"
       tags:
