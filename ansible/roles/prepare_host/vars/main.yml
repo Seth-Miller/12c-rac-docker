@@ -52,6 +52,7 @@ docker:
       name: priv
       subnet: 11.11.11.0
       cidr: 24
+
   containers: 
     - name: bind
       hostname: bind
@@ -72,6 +73,7 @@ docker:
       hostname: dhcpd
       image: networkboot/dhcpd
       config_directory: /srv/docker/dhcpd
+      config_file: dhcpd.conf
       volumes:
         - "/srv/docker/dhcpd:/data"
         - "/srv/docker/bind/bind/etc:/keys"
@@ -80,4 +82,14 @@ docker:
           ipv4_address: "10.10.10.11"
         - name: "priv"
           ipv4_address: "11.11.11.11"
+      dns: 10.10.10.10
+
+    - name: nfs
+      hostname: nfs
+      image: sethmiller/nfs
+      config_directory: /srv/docker/nfs
+      config_file: ganesha.conf
+      volumes:
+        - "/srv/docker/nfs:/etc/ganesha"
+        - "/oraclenfs:/oraclenfs"
       dns: 10.10.10.10
