@@ -1,6 +1,7 @@
 
 
 
+
 asm_disk_groups:
   - group: DATA
     disks:
@@ -23,6 +24,8 @@ asm_disk_groups:
         type: file
 
 operating_system:
+  pipework_directory: /srv/docker/scripts
+  pipework_file: pipework
   grid_infrastructure:
     users:
       - name: grid
@@ -93,3 +96,13 @@ docker:
         - "/srv/docker/nfs:/etc/ganesha"
         - "/oraclenfs:/oraclenfs"
       dns: 10.10.10.10
+
+    - name: rac1
+      hostname: rac1
+      image: sethmiller/giready
+      volumes:
+        - "/oracledata/stage:/stage"
+        - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+      dns: 10.10.10.10
+      shm_size: 2048m
+      command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"

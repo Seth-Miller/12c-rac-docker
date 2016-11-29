@@ -3,7 +3,7 @@
       file:
         state: touch
         path: "{{ item[1].path }}"
-      become: true
+      become: True
       with_subelements:
         - "{{ asm_disk_groups }}"
         - disks
@@ -16,7 +16,7 @@
     
     - name: Inflate ASM file devices
       command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
-      become: true
+      become: True
       with_items:
         - "{{ asm_disk_files.results }}"
       when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
@@ -32,7 +32,7 @@
         owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
         group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
         mode: 0660
-      become: true
+      become: True
       with_subelements:
         - "{{ asm_disk_groups }}"
         - disks
@@ -97,7 +97,7 @@
         state: directory
         path: "{{ item.config_directory }}"
         mode: 0777
-      become: true
+      become: True
       with_items:
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
@@ -144,7 +144,7 @@
         state: directory
         path: "{{ item.config_directory }}"
         mode: 0777
-      become: true
+      become: True
       with_items:
         - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
       tags:
@@ -183,4 +183,32 @@
       tags:
         - create_nfs_container
         - nfs
+        - docker
+
+    - name: Create rac1 container
+      docker_container:
+        name: rac1
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        command: "{{ item.command }}"
+        shm_size: "{{ item.shm_size }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+      tags:
+        - create_rac1_container
+        - rac1
+        - docker
+
+    - name: Copy Pipework script
+      copy:
+        src: "{{ operating_system.pipework_file }}" 
+        dest: "{{ operating_system.pipework_directory }}/"
+        mode: 0744
+      become: True
+      tags:
+        - copy_pipework_file
         - docker
