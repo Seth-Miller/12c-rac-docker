@@ -311,7 +311,7 @@ docker exec rac1 su - oracle -c ' \
 "oracle.install.db.BACKUPDBA_GROUP=dba" \
 "oracle.install.db.DGDBA_GROUP=dba" \
 "oracle.install.db.KMDBA_GROUP=dba" \
-"oracle.install.db.CLUSTER_NODES=rac1.example.com" \
+"oracle.install.db.CLUSTER_NODES=rac1" \
 "DECLINE_SECURITY_UPDATES=true"'
 ```
 
@@ -467,7 +467,7 @@ docker exec rac1 su - oracle -c ' \
 -nationalCharacterSet UTF8 \
 -totalMemory 1024 \
 -emConfiguration none \
--nodelist rac1.example.com,rac2.example.com \
+-nodelist rac1,rac2 \
 -createAsContainerDatabase True'
 ```
 
