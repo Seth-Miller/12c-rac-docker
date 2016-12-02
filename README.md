@@ -311,7 +311,7 @@ docker exec rac1 su - oracle -c ' \
 "oracle.install.db.BACKUPDBA_GROUP=dba" \
 "oracle.install.db.DGDBA_GROUP=dba" \
 "oracle.install.db.KMDBA_GROUP=dba" \
-"oracle.install.db.CLUSTER_NODES=rac1.example.com" \
+"oracle.install.db.CLUSTER_NODES=rac1" \
 "DECLINE_SECURITY_UPDATES=true"'
 ```
 
@@ -388,7 +388,7 @@ Configure shared key SSH authentication among all RAC node containers.
 ./fixssh.sh rac1 rac2
 ```
 
-Connect to the first RAC node container and configure the installed grid infrastructure. Modify the `oracle.install.asm.diskGroup.disks` and `oracle.install.asm.diskGroup.diskDiscoveryString` parameters to match the ASM block devices from the host.
+Connect to the first RAC node container and configure the installed grid infrastructure.
 
 During the configuration, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
@@ -467,7 +467,7 @@ docker exec rac1 su - oracle -c ' \
 -nationalCharacterSet UTF8 \
 -totalMemory 1024 \
 -emConfiguration none \
--nodelist rac1.example.com,rac2.example.com \
+-nodelist rac1,rac2 \
 -createAsContainerDatabase True'
 ```
 
