@@ -105,11 +105,15 @@ docker:
         - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
       networks:
         - name: pub
+          dhcp_hostname: rac1
+          dhclient_pid: /var/run/dhclient-eth1.pid
           ipv4_address: 0.0.0.0
           cidr: 24
           internal_network_name: eth1
           external_network_name: rac1-pub
         - name: priv
+          dhcp_hostname: rac1-priv
+          dhclient_pid: /var/run/dhclient-eth2.pid
           ipv4_address: 0.0.0.0
           cidr: 24
           internal_network_name: eth2

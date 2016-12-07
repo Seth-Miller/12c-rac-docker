@@ -240,9 +240,12 @@
 #        - networking
 #        - docker
 
-    - name: Drop left over rac1 networks
+    - name: Drop existing rac1 networks from docker host
       command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
       become: True
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
       with_subelements:
         - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
         - networks
@@ -254,6 +257,20 @@
     - name: Add networks to rac1
       command: "{{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }} br-{{ docker_net_facts.results | selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) | map(attribute='ansible_facts.Ansible_docker_network.Id') |  first | truncate(12, True, '') }} -i {{ item.1.internal_network_name }} -l {{ item.1.external_network_name }} {{ item.0.name }} {{ item.1.ipv4_address }}/{{ item.1.cidr }}"
       become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - add_rac1_network
+        - rac1
+        - networking
+        - docker
+
+    - name: Start dhclient for each network on rac1
+      command: "/usr/bin/docker exec {{ item.0.name }} dhclient -H {{ item.1.dhcp_hostname }} -pf {{ item.1.dhclient_pid }} {{ item.1.internal_network_name }}"
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and (' is already running' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and (' is already running' not in command_result.stderr)
       with_subelements:
         - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
         - networks
