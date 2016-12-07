@@ -203,7 +203,7 @@
         - rac1
         - docker
 
-    - name: Copy Pipework script
+    - name: Copy pipework script
       copy:
         src: "{{ operating_system.pipework_file }}" 
         dest: "{{ operating_system.pipework_directory }}/"
@@ -211,4 +211,54 @@
       become: True
       tags:
         - copy_pipework_file
+        - networking
+        - rac1
+        - docker
+
+    - name: Pull Docker network facts
+      docker_network:
+        name: "{{ item.name }}"
+      with_items:
+        - "{{ docker.networks }}"
+      register: docker_net_facts
+      tags:
+        - pull_docker_network_facts
+        - networking
+        - rac1
+        - docker
+
+#    - name: Debug the pipework execution
+#      debug:
+#        msg: "{{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }} br-{{ docker_net_facts.results | selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) | map(attribute='ansible_facts.Ansible_docker_network.Id') |  first | truncate(12, True, '') }} -i {{ item.1.internal_network_name }} -l {{ item.1.external_network_name }} {{ item.0.name }} {{ item.1.ipv4_address }}/{{ item.1.cidr }}"
+#      with_subelements:
+#        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+#        - networks
+#      when: item.0.name == 'rac1'
+#      tags:
+#        - pull_docker_network_facts
+#        - rac1
+#        - networking
+#        - docker
+
+    - name: Drop left over rac1 networks
+      command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - delete_rac1_network
+        - rac1
+        - networking
+
+    - name: Add networks to rac1
+      command: "{{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }} br-{{ docker_net_facts.results | selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) | map(attribute='ansible_facts.Ansible_docker_network.Id') |  first | truncate(12, True, '') }} -i {{ item.1.internal_network_name }} -l {{ item.1.external_network_name }} {{ item.0.name }} {{ item.1.ipv4_address }}/{{ item.1.cidr }}"
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - add_rac1_network
+        - rac1
+        - networking
         - docker

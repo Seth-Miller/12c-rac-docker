@@ -103,6 +103,17 @@ docker:
       volumes:
         - "/oracledata/stage:/stage"
         - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+      networks:
+        - name: pub
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth1
+          external_network_name: rac1-pub
+        - name: priv
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth2
+          external_network_name: rac1-priv
       dns: 10.10.10.10
       shm_size: 2048m
       command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
