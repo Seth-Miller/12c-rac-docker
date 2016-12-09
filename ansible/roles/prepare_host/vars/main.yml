@@ -11,7 +11,7 @@ asm_disk_groups:
       - rawpath: /dev/sde
         udevpath: /dev/asmdisks/asm-clu-121-DATA-disk2
         type: block
-      - rawpath: /dev/sdf
+      - rawpath: /dev/sdh
         udevpath: /dev/asmdisks/asm-clu-121-DATA-disk3
         type: block
   - group: NDATA
@@ -100,7 +100,10 @@ docker:
     - name: rac1
       hostname: rac1
       image: sethmiller/giready
+      host_directories:
+        - /srv/docker/rac_nodes/custom_services
       volumes:
+        - "/srv/docker/rac_nodes/custom_services:/usr/lib/custom_services"
         - "/oracledata/stage:/stage"
         - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
       networks:

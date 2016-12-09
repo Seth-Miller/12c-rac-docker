@@ -106,6 +106,20 @@
         - dhcpd_config
         - docker
 
+    - name: Create rac_nodes custom directories
+      file:
+        state: directory
+        path: "{{ item.1 }}"
+        mode: 0777
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - host_directories
+      tags:
+        - create_rac_nodes_custom_dirs
+        - rac1
+        - docker
+
     - name: Copy DHCPD configuration file
       copy:
         src: "{{ item.config_file }}" 
@@ -254,6 +268,23 @@
         - rac1
         - networking
 
+    - name: Create dhclient service files
+      template:
+        src: dhclient.j2
+        dest: "{{ item.0.host_directories.0 }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - add_rac1_dhclient_services
+        - rac1
+        - networking
+        - docker
+
     - name: Add networks to rac1
       command: "{{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }} br-{{ docker_net_facts.results | selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) | map(attribute='ansible_facts.Ansible_docker_network.Id') |  first | truncate(12, True, '') }} -i {{ item.1.internal_network_name }} -l {{ item.1.external_network_name }} {{ item.0.name }} {{ item.1.ipv4_address }}/{{ item.1.cidr }}"
       become: True
@@ -261,21 +292,34 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
         - networks
       tags:
-        - add_rac1_network
+        - add_rac1_networks
         - rac1
         - networking
         - docker
 
-    - name: Start dhclient for each network on rac1
-      command: "/usr/bin/docker exec {{ item.0.name }} dhclient -H {{ item.1.dhcp_hostname }} -pf {{ item.1.dhclient_pid }} {{ item.1.internal_network_name }}"
+    - name: Enable dhclient for each network on rac1
+      command: "/usr/bin/docker exec {{ item.0.name }} /usr/bin/ln -s /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
       register: command_result
-      changed_when: (command_result.rc == 0 ) and (' is already running' not in command_result.stderr)
-      failed_when: (command_result.rc != 0) and (' is already running' not in command_result.stderr)
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
       with_subelements:
         - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
         - networks
       tags:
-        - add_rac1_network
+        - enable_rac1_dhclient
+        - rac1
+        - networking
+
+    - name: Start dhclient for each network on rac1
+      command: "/usr/bin/docker exec {{ item.0.name }} /usr/bin/systemctl start dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      register: command_result
+#      changed_when: (command_result.rc == 0 ) and (' is already running' not in command_result.stderr)
+#      failed_when: (command_result.rc != 0) and (' is already running' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - start_rac1_dhclient
         - rac1
         - networking
         - docker
