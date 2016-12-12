@@ -303,7 +303,7 @@
       tags:
         - enable_rac1_dhclient
         - rac1
-        - networking
+        - dhclient
         - docker
 
     - name: Start dhclient for each network on rac1
@@ -316,7 +316,7 @@
       tags:
         - start_rac1_dhclient
         - rac1
-        - networking
+        - dhclient
         - docker
 
     - name: Create asm disk udev configuration file
@@ -329,6 +329,7 @@
       become: True
       tags:
         - create_asm_disk_udev_file
+        - udev
         - asm
         - docker
 
@@ -344,6 +345,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
       tags:
         - enable_rac1_udev
+        - udev
         - rac1
         - docker
 
@@ -355,6 +357,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
       tags:
         - reload_rac1_udev
+        - udev
         - rac1
         - docker
 
@@ -368,7 +371,7 @@
         - "{{ installation_files }}"
       tags:
         - create_installation_file_dirs
-        - docker
+        - installation_files
 
     - name: Download installation files
       get_url:
@@ -380,6 +383,7 @@
         - files
       tags:
         - download_installation_files
+        - installation_files
 
     - name: Unzip installation files
       unarchive:
@@ -394,3 +398,4 @@
         - files
       tags:
         - unzip_installation_files
+        - installation_files
