@@ -357,3 +357,40 @@
         - reload_rac1_udev
         - rac1
         - docker
+
+    - name: Create installation file directories
+      file:
+        state: directory
+        path: "/oracledata/stage/{{ item.version }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ installation_files }}"
+      tags:
+        - create_installation_file_dirs
+        - docker
+
+    - name: Download installation files
+      get_url:
+        url: "{{ item.1.name }}"
+        dest: "/oracledata/stage/{{ item.1.name | basename }}"
+      become: True
+      with_subelements:
+        - "{{ installation_files }}"
+        - files
+      tags:
+        - download_installation_files
+
+    - name: Unzip installation files
+      unarchive:
+        src: "/oracledata/stage/{{ item.1.name | basename }}"
+        dest: "/oracledata/stage/{{ item.0.version }}/"
+        creates: "/oracledata/stage/{{ item.0.version }}/{{ item.1.creates }}"
+        remote_src: True
+        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'inventory') | map(attribute='gid') | first }}"
+      become: True
+      with_subelements:
+        - "{{ installation_files }}"
+        - files
+      tags:
+        - unzip_installation_files

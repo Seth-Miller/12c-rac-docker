@@ -46,6 +46,22 @@ operating_system:
         title: osasm
         gid: 54424
 
+installation_files:
+  - type: grid
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_1of2.zip
+        creates: grid/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_2of2.zip
+        creates: grid/stage/Components/oracle.has.crs/12.1.0.2.0
+  - type: database
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_1of2.zip
+        creates: database/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_2of2.zip
+        creates: database/stage/Components/oracle.rdbms/12.1.0.2.0
+
 docker:
   networks:
     - type: public
