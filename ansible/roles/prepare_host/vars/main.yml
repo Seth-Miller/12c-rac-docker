@@ -24,6 +24,7 @@ asm_disk_groups:
         type: file
 
 operating_system:
+  rac_node_directory: /srv/docker/rac_nodes/custom_services
   pipework_directory: /srv/docker/scripts
   pipework_file: pipework
   grid_infrastructure:
@@ -59,6 +60,7 @@ docker:
   containers: 
     - name: bind
       hostname: bind
+      type:
       image: sethmiller/bind
       ports:
         - "53:53/tcp"
@@ -74,6 +76,7 @@ docker:
 
     - name: dhcpd
       hostname: dhcpd
+      type:
       image: networkboot/dhcpd
       config_directory: /srv/docker/dhcpd
       config_file: dhcpd.conf
@@ -89,6 +92,7 @@ docker:
 
     - name: nfs
       hostname: nfs
+      type:
       image: sethmiller/nfs
       config_directory: /srv/docker/nfs
       config_file: ganesha.conf
@@ -99,9 +103,8 @@ docker:
 
     - name: rac1
       hostname: rac1
+      type: rac_node
       image: sethmiller/giready
-      host_directories:
-        - /srv/docker/rac_nodes/custom_services
       volumes:
         - "/srv/docker/rac_nodes/custom_services:/usr/lib/custom_services"
         - "/oracledata/stage:/stage"

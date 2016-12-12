@@ -1,27 +1,27 @@
 
-    - name: Create ASM file devices
-      file:
-        state: touch
-        path: "{{ item[1].path }}"
-      become: True
-      with_subelements:
-        - "{{ asm_disk_groups }}"
-        - disks
-      when: item[1].type == "file"
-      register: asm_disk_files
+    - block:
+        - name: Create ASM file devices
+          file:
+            state: touch
+            path: "{{ item[1].path }}"
+          become: True
+          with_subelements:
+            - "{{ asm_disk_groups }}"
+            - disks
+          when: item[1].type == "file"
+          register: asm_disk_files
+          tags:
+            - create_asm_files
+        
+        - name: Inflate ASM file devices
+          command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
+          become: True
+          with_items:
+            - "{{ asm_disk_files.results }}"
+          when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
+          tags:
+            - inflate_asm_files
       tags:
-        - create_asm_files
-        - asm_files
-        - asm
-    
-    - name: Inflate ASM file devices
-      command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
-      become: True
-      with_items:
-        - "{{ asm_disk_files.results }}"
-      when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
-      tags:
-        - inflate_asm_files
         - asm_files
         - asm
 
@@ -49,7 +49,6 @@
         - "{{ asm_disk_groups }}"
         - disks
       when: item[1].type == "block"
-      register: asm_disk_blocks
       tags:
         - check_asm_blocks
         - asm_blocks
@@ -109,12 +108,9 @@
     - name: Create rac_nodes custom directories
       file:
         state: directory
-        path: "{{ item.1 }}"
+        path: "{{ operating_system.rac_node_directory }}"
         mode: 0777
       become: True
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
-        - host_directories
       tags:
         - create_rac_nodes_custom_dirs
         - rac1
@@ -229,19 +225,6 @@
         - rac1
         - docker
 
-#    - name: Debug the pipework execution
-#      debug:
-#        msg: "{{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }} br-{{ docker_net_facts.results | selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) | map(attribute='ansible_facts.Ansible_docker_network.Id') |  first | truncate(12, True, '') }} -i {{ item.1.internal_network_name }} -l {{ item.1.external_network_name }} {{ item.0.name }} {{ item.1.ipv4_address }}/{{ item.1.cidr }}"
-#      with_subelements:
-#        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
-#        - networks
-#      when: item.0.name == 'rac1'
-#      tags:
-#        - pull_docker_network_facts
-#        - rac1
-#        - networking
-#        - docker
-
     - name: Drop existing rac1 networks from docker host
       command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
       become: True
@@ -259,7 +242,7 @@
     - name: Create dhclient service files
       template:
         src: dhclient.j2
-        dest: "{{ item.0.host_directories.0 }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
         owner: root
         group: root
         mode: 0644
@@ -306,10 +289,11 @@
         - docker
 
     - name: Enable dhclient for each network on rac1
-      command: "/usr/bin/docker exec {{ item.0.name }}
-                /usr/bin/ln -s
-                /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
-                /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      command: >
+        /usr/bin/docker exec {{ item.0.name }}
+        /usr/bin/ln -s
+        /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+        /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
       register: command_result
       changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
       failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
@@ -320,6 +304,7 @@
         - enable_rac1_dhclient
         - rac1
         - networking
+        - docker
 
     - name: Start dhclient for each network on rac1
       command: "/usr/bin/docker exec {{ item.0.name }}
@@ -333,3 +318,31 @@
         - rac1
         - networking
         - docker
+
+    - name: Create asm disk udev configuration file
+      template:
+        src: 99-asm-disks.rules.j2
+        dest: "{{ operating_system.rac_node_directory }}/99-asm-disk.rules"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      tags:
+        - create_asm_disk_udev_file
+        - asm
+        - docker
+
+    - name: Enable asm disk udev configuration
+      command: >
+        /usr/bin/docker exec {{ item.name }}
+        /usr/bin/ln -s /usr/lib/custom_services/99-asm-disk.rules /etc/udev/rules.d/
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+      tags:
+        - enable_rac1_udev
+        - rac1
+        - docker
+

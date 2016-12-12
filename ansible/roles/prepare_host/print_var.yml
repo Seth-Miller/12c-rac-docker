@@ -8,25 +8,13 @@
     - include_vars: main.yml
 
     - debug:
-        msg: "Variable {{ item[1].path }}"
-      with_subelements:
-        - "{{ asm_disk_groups }}"
-        - disks
-      when: item[1].type == "file"
-      register: disks
-
-    - debug:
-        msg: "Register || {{ item }} || End Register"
-      with_items:
-        - "{{ disks.results }}"
-
-    - debug:
-        msg: ""
-      with_items:
-        - "{{ operating_system }}"
-
-    - debug:
-        msg: "{{ operating_system.grid_infrastructure.groups }}"
-
-    - debug:
-        msg: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
+        msg: |
+             {% for diskgroup in asm_disk_groups %} 
+               {% for disk in diskgroup.disks %}
+                 {% if disk.type == 'block' %}
+                   KERNEL=="{{ disk.rawpath }}", SYMLINK+="{{ disk.udevpath }}", GROUP="{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid'    ) | first }}"
+                 {% endif %}
+               {% endfor %}
+             {% endfor %}
+#      with_items:
+#        - "{{ testvar }}"
