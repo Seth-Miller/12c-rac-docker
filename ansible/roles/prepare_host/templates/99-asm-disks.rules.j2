@@ -1,7 +1,7 @@
 {% for diskgroup in asm_disk_groups %}
 {% for disk in diskgroup.disks %}
 {% if disk.type == 'block' %}
-KERNEL=="{{ disk.rawpath }}", SYMLINK+="{{ disk.udevpath }}", GROUP="{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
+KERNEL=="{{ disk.rawpath | replace('/dev/', '', 1) }}", SYMLINK+="{{ disk.udevpath | replace('/dev/', '', 1) }}", GROUP="{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
 {% endif %}
 {% endfor %}
 {% endfor %}
