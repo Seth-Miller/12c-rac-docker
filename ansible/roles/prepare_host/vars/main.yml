@@ -11,7 +11,7 @@ asm_disk_groups:
       - rawpath: /dev/sde
         udevpath: /dev/asmdisks/asm-clu-121-DATA-disk2
         type: block
-      - rawpath: /dev/sdh
+      - rawpath: /dev/sdf
         udevpath: /dev/asmdisks/asm-clu-121-DATA-disk3
         type: block
   - group: NDATA

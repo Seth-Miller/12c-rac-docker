@@ -336,6 +336,7 @@
       command: >
         /usr/bin/docker exec {{ item.name }}
         /usr/bin/ln -s /usr/lib/custom_services/99-asm-disk.rules /etc/udev/rules.d/
+      become: True
       register: command_result
       changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
       failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
@@ -346,3 +347,13 @@
         - rac1
         - docker
 
+    - name: Reload udev rules
+      command: /usr/bin/docker exec {{ item.name }} /usr/sbin/udevadm trigger
+      become: True
+      register: command_result
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+      tags:
+        - reload_rac1_udev
+        - rac1
+        - docker
