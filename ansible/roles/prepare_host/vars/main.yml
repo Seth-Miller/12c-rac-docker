@@ -31,11 +31,11 @@ operating_system:
     users:
       - name: grid
         title: owner
-        uid: 54325
+        uid: 54421
     groups:
       - name: oinstall
         title: inventory
-        gid: 54421
+        gid: 54321
       - name: asmdba
         title: osdba
         gid: 54422
@@ -45,6 +45,15 @@ operating_system:
       - name: asmadmin
         title: osasm
         gid: 54424
+  database:
+    users:
+      - name: oracle
+        title: owner
+        uid: 54321
+    groups:
+      - name: dba
+        title: osdba
+        gid: 54322
 
 installation_files:
   - type: grid
@@ -54,6 +63,19 @@ installation_files:
         creates: grid/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
       - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_2of2.zip
         creates: grid/stage/Components/oracle.has.crs/12.1.0.2.0
+    installer_parameters:
+      - -waitforcompletion
+      - -ignoreSysPrereqs
+      - -silent
+      - -force
+      - INVENTORY_LOCATION=/u01/app/oraInventory
+      - UNIX_GROUP_NAME=oinstall
+      - ORACLE_HOME=/u01/app/12.1.0/grid
+      - ORACLE_BASE=/u01/app/grid
+      - oracle.install.option=CRS_SWONLY
+      - oracle.install.asm.OSDBA=asmdba
+      - oracle.install.asm.OSOPER=
+      - oracle.install.asm.OSASM=asmadmin
   - type: database
     version: 12.1.0.2
     files:
@@ -120,6 +142,7 @@ docker:
     - name: rac1
       hostname: rac1
       type: rac_node
+      designation: first
       image: sethmiller/giready
       volumes:
         - "/srv/docker/rac_nodes/custom_services:/usr/lib/custom_services"
@@ -143,3 +166,12 @@ docker:
       dns: 10.10.10.10
       shm_size: 2048m
       command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
+
+
+
+first_rac_node: >-
+     {{ docker.containers |
+     selectattr('designation', 'defined') |
+     selectattr('type', 'equalto', 'rac_node') |
+     selectattr('designation', 'equalto', 'first') |
+     map(attribute='name') | first | join }}

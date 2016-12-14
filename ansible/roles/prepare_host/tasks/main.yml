@@ -399,3 +399,52 @@
       tags:
         - unzip_installation_files
         - installation_files
+
+    - block:
+        - name: Install grid infrastructure binaries
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.grid_infrastructure.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "/stage/{{
+                   installation_files |
+                   selectattr('type', 'equalto', 'grid') |
+                   map(attribute='version') |
+                   first
+                 }}/grid/runInstaller
+                 {{
+                   installation_files |
+                   selectattr('type', 'equalto', 'grid') |
+                   map(attribute='installer_parameters') |
+                   first | join(' ')
+                 }}"
+          register: install_grid_binaries_result
+          changed_when: (install_grid_binaries_result.rc == 0 ) or (install_grid_binaries_result.rc == 6 )
+          failed_when: (install_grid_binaries_result.rc != 0) and (install_grid_binaries_result.rc != 6 )
+
+        - name: Tail the log file
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.grid_infrastructure.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "tail -100 {{ install_grid_binaries_result.stdout }}"
+          register: command_result
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: install_grid_binaries_result.stdout_lines
+      tags:
+        - install_grid
+        - rac1
+        - docker
+
+
+
+     
+
