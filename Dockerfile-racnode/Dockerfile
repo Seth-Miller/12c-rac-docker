@@ -75,3 +75,7 @@ RUN ["chmod", "4755", "/bin/ping"]
 # SELinux bug fix
 RUN ["mkdir", "-p", "/etc/selinux/targeted/contexts/"]
 ADD ["dbus_contexts", "/etc/selinux/targeted/contexts/"]
+
+
+# Hide/disable the ttyS0 serial console service
+RUN ["systemctl", "mask", "serial-getty@ttyS0.service"]
