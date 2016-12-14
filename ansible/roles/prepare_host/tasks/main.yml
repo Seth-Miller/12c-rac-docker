@@ -350,11 +350,11 @@
         - docker
 
     - name: Reload udev rules
-      command: /usr/bin/docker exec {{ item.name }} /usr/sbin/udevadm trigger
+      command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
       become: True
-      register: command_result
       with_items:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - /usr/sbin/udevadm control --reload-rules
+        - /usr/sbin/udevadm trigger
       tags:
         - reload_rac1_udev
         - udev
@@ -424,17 +424,6 @@
           register: install_grid_binaries_result
           changed_when: (install_grid_binaries_result.rc == 0 ) or (install_grid_binaries_result.rc == 6 )
           failed_when: (install_grid_binaries_result.rc != 0) and (install_grid_binaries_result.rc != 6 )
-
-        - name: Tail the log file
-          command: >
-                 /usr/bin/docker exec {{ first_rac_node }} su -
-                 {{
-                   operating_system.grid_infrastructure.users |
-                   selectattr('title', 'equalto', 'owner') |
-                   map(attribute='name') |
-                   first
-                 }} -c "tail -100 {{ install_grid_binaries_result.stdout }}"
-          register: command_result
       always:
         - name: Print readable previous command output
           debug:
