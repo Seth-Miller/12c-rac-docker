@@ -424,6 +424,13 @@
           register: install_grid_binaries_result
           changed_when: (install_grid_binaries_result.rc == 0 ) or (install_grid_binaries_result.rc == 6 )
           failed_when: (install_grid_binaries_result.rc != 0) and (install_grid_binaries_result.rc != 6 )
+
+        - name: Run grid infrastructure root scripts
+          command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
+          with_items:
+            - /u01/app/oraInventory/orainstRoot.sh
+            - /u01/app/12.1.0/grid/root.sh
+
       always:
         - name: Print readable previous command output
           debug:
