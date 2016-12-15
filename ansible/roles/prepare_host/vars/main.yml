@@ -83,6 +83,22 @@ installation_files:
         creates: database/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
       - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_2of2.zip
         creates: database/stage/Components/oracle.rdbms/12.1.0.2.0
+    installer_parameters:
+      - -waitforcompletion
+      - -ignoreSysPrereqs
+      - -silent
+      - -force
+      - INVENTORY_LOCATION=/u01/app/oraInventory
+      - UNIX_GROUP_NAME=oinstall
+      - ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1
+      - ORACLE_BASE=/u01/app/oracle
+      - oracle.install.option=INSTALL_DB_SWONLY
+      - oracle.install.db.InstallEdition=EE
+      - oracle.install.db.DBA_GROUP=dba
+      - oracle.install.db.BACKUPDBA_GROUP=dba
+      - oracle.install.db.DGDBA_GROUP=dba
+      - oracle.install.db.KMDBA_GROUP=dba
+      - DECLINE_SECURITY_UPDATES=true
 
 docker:
   networks:

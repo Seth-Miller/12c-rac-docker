@@ -440,6 +440,44 @@
         - rac1
         - docker
 
+    - block:
+        - name: Install database binaries
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.database.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "/stage/{{
+                   installation_files |
+                   selectattr('type', 'equalto', 'database') |
+                   map(attribute='version') |
+                   first
+                 }}/database/runInstaller
+                 {{
+                   installation_files |
+                   selectattr('type', 'equalto', 'database') |
+                   map(attribute='installer_parameters') |
+                   first | join(' ')
+                 }}"
+          register: install_database_binaries_result
+          changed_when: (install_database_binaries_result.rc == 0 ) or (install_database_binaries_result.rc == 6 )
+          failed_when: (install_database_binaries_result.rc != 0) and (install_database_binaries_result.rc != 6 )
+
+        - name: Run database installer root scripts
+          command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
+          with_items:
+            - /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: install_database_binaries_result.stdout_lines
+      tags:
+        - install_database
+        - rac1
+        - docker
 
 
      
