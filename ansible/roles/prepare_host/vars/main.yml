@@ -183,6 +183,33 @@ docker:
       shm_size: 2048m
       command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
 
+    - name: rac2
+      hostname: rac2
+      type: rac_node
+      designation: additional
+      image: giinstalled
+      volumes:
+        - "/srv/docker/rac_nodes/custom_services:/usr/lib/custom_services"
+        - "/oracledata/stage:/stage"
+        - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+      networks:
+        - name: pub
+          dhcp_hostname: rac1
+          dhclient_pid: /var/run/dhclient-eth1.pid
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth1
+          external_network_name: rac1-pub
+        - name: priv
+          dhcp_hostname: rac1-priv
+          dhclient_pid: /var/run/dhclient-eth2.pid
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth2
+          external_network_name: rac1-priv
+      dns: 10.10.10.10
+      shm_size: 2048m
+      command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
 
 
 first_rac_node: >-
@@ -190,4 +217,10 @@ first_rac_node: >-
      selectattr('designation', 'defined') |
      selectattr('type', 'equalto', 'rac_node') |
      selectattr('designation', 'equalto', 'first') |
-     map(attribute='name') | first | join }}
+     map(attribute='name') | first }}
+additional_rac_node: >-
+     {{ docker.containers |
+     selectattr('designation', 'defined') |
+     selectattr('type', 'equalto', 'rac_node') |
+     selectattr('designation', 'equalto', 'additional') |
+     map(attribute='name') | first }}
