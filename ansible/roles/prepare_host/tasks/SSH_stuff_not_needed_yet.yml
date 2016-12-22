@@ -1,0 +1,844 @@
+
+    - block:
+        - name: Create ASM file devices
+          file:
+            state: touch
+            path: "{{ item[1].path }}"
+          become: True
+          with_subelements:
+            - "{{ asm_disk_groups }}"
+            - disks
+          when: item[1].type == "file"
+          register: asm_disk_files
+          tags:
+            - create_asm_files
+        
+        - name: Inflate ASM file devices
+          command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
+          become: True
+          with_items:
+            - "{{ asm_disk_files.results }}"
+          when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
+          tags:
+            - inflate_asm_files
+      tags:
+        - asm_files
+        - asm
+
+    - name: Check ASM file devices
+      file:
+        state: file
+        path: "{{ item[1].path }}"
+        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
+        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
+        mode: 0660
+      become: True
+      with_subelements:
+        - "{{ asm_disk_groups }}"
+        - disks
+      when: item[1].type == "file"
+      tags:
+        - check_asm_files
+        - asm_files
+        - asm
+
+    - name: Check ASM block devices
+      stat:
+        path: "{{ item[1].rawpath }}"
+      with_subelements:
+        - "{{ asm_disk_groups }}"
+        - disks
+      when: item[1].type == "block"
+      tags:
+        - check_asm_blocks
+        - asm_blocks
+        - asm
+
+    - name: Create Docker networks
+      docker_network:
+        name: "{{ item.name }}"
+        appends: True
+        state: present
+        ipam_options:
+          subnet: "{{ item.subnet }}/{{ item.cidr }}"
+      with_items:
+        - "{{ docker.networks }}"
+      tags:
+        - create_docker_networks
+        - docker
+
+    - name: Create BIND container
+      docker_container:
+        name: bind
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        interactive: True
+        tty: True
+        published_ports:
+          "{{ item.ports }}"
+        volumes:
+          "{{ item.volumes }}"
+        networks:
+          "{{ item.networks }}"
+        env:
+          "{{ item.env }}"
+        command: "{{ item.command }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'bind') | list }}"
+      tags:
+        - create_bind_container
+        - bind
+        - docker
+
+    - name: Create DHCPD configuration directory
+      file:
+        state: directory
+        path: "{{ item.config_directory }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - create_dhcpd_config_dir
+        - dhcpd
+        - dhcpd_config
+        - docker
+
+    - name: Create rac_nodes custom directories
+      file:
+        state: directory
+        path: "{{ operating_system.rac_node_directory }}"
+        mode: 0777
+      become: True
+      tags:
+        - create_rac_nodes_custom_dirs
+        - rac1
+        - docker
+
+    - name: Copy DHCPD configuration file
+      copy:
+        src: "{{ item.config_file }}" 
+        dest: "{{ item.config_directory }}/"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - copy_dhcpd_config_file
+        - dhcpd
+        - dhcpd_config
+        - docker
+
+    - name: Create DHCPD container
+      docker_container:
+        name: dhcpd
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        interactive: True
+        tty: True
+        volumes:
+          "{{ item.volumes }}"
+        networks:
+          "{{ item.networks }}"
+        dns_servers:
+          "{{ item.dns }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - create_dhcpd_container
+        - dhcpd
+        - docker
+
+    - name: Create NFS configuration directory
+      file:
+        state: directory
+        path: "{{ item.config_directory }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
+      tags:
+        - create_nfs_config_dir
+        - nfs
+        - nfs_config
+        - docker
+
+    - name: Copy NFS configuration file
+      copy:
+        src: "{{ item.config_file }}" 
+        dest: "{{ item.config_directory }}/"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
+      tags:
+        - copy_nfs_config_file
+        - nfs
+        - nfs_config
+        - docker
+
+    - name: Create NFS container
+      docker_container:
+        name: nfs
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        interactive: True
+        tty: True
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        dns_servers:
+          "{{ item.dns }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
+      tags:
+        - create_nfs_container
+        - nfs
+        - docker
+
+    - name: Create rac1 container
+      docker_container:
+        name: "{{ first_rac_node }}"
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        command: "{{ item.command }}"
+        shm_size: "{{ item.shm_size }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', first_rac_node) | list }}"
+      tags:
+        - create_rac1_container
+        - rac1
+        - docker
+
+    - name: Copy pipework script
+      copy:
+        src: "{{ operating_system.pipework_file }}" 
+        dest: "{{ operating_system.pipework_directory }}/"
+        mode: 0744
+      become: True
+      tags:
+        - copy_pipework_file
+        - networking
+        - rac1
+        - docker
+
+    - name: Drop existing rac1 networks from docker host
+      command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+      become: True
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - delete_rac1_network
+        - rac1
+        - networking
+
+    - name: Create dhclient service files
+      template:
+        src: dhclient.j2
+        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - add_rac1_dhclient_services
+        - rac1
+        - networking
+        - docker
+
+    - block:
+        - name: Pull Docker network facts
+          docker_network:
+            name: "{{ item.name }}"
+          with_items:
+            - "{{ docker.networks }}"
+          register: docker_net_facts
+
+        - name: Add networks to rac1
+          command: >
+            {{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }}
+            br-{{ docker_net_facts.results |
+              selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) |
+              map(attribute='ansible_facts.Ansible_docker_network.Id') | first |
+              truncate(12, True, '') }}
+            -i {{ item.1.internal_network_name }}
+            -l {{ item.1.external_network_name }}
+            {{ item.0.name }}
+            {{ item.1.ipv4_address }}/{{ item.1.cidr }}
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('exists and is up' not in command_result.stdout)
+          failed_when: (command_result.rc != 0) and ('exists and is up' not in command_result.stdout)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+            - networks
+      tags:
+        - add_rac1_networks
+        - rac1
+        - networking
+        - docker
+
+    - name: Enable dhclient for each network on rac1
+      command: >
+        /usr/bin/docker exec {{ item.0.name }}
+        /usr/bin/ln -s
+        /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+        /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - enable_rac1_dhclient
+        - rac1
+        - dhclient
+        - docker
+
+    - name: Start dhclient for each network on rac1
+      command: "/usr/bin/docker exec {{ item.0.name }}
+                /usr/bin/systemctl start dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      register: command_result
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - start_rac1_dhclient
+        - rac1
+        - dhclient
+        - docker
+
+    - name: Create asm disk udev configuration file
+      template:
+        src: 99-asm-disks.rules.j2
+        dest: "{{ operating_system.rac_node_directory }}/99-asm-disk.rules"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      tags:
+        - create_asm_disk_udev_file
+        - udev
+        - asm
+        - docker
+
+    - name: Enable asm disk udev configuration
+      command: >
+        /usr/bin/docker exec {{ item.name }}
+        /usr/bin/ln -s /usr/lib/custom_services/99-asm-disk.rules /etc/udev/rules.d/
+      become: True
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+      tags:
+        - enable_rac1_udev
+        - udev
+        - rac1
+        - docker
+
+    - name: Reload udev rules
+      command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
+      become: True
+      with_items:
+        - /usr/sbin/udevadm control --reload-rules
+        - /usr/sbin/udevadm trigger
+      tags:
+        - reload_rac1_udev
+        - udev
+        - rac1
+        - docker
+
+    - name: Create installation file directories
+      file:
+        state: directory
+        path: "/oracledata/stage/{{ item.version }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ installation_files }}"
+      tags:
+        - create_installation_file_dirs
+        - installation_files
+
+    - name: Download installation files
+      get_url:
+        url: "{{ item.1.name }}"
+        dest: "/oracledata/stage/{{ item.1.name | basename }}"
+      become: True
+      with_subelements:
+        - "{{ installation_files }}"
+        - files
+      tags:
+        - download_installation_files
+        - installation_files
+
+    - name: Unzip installation files
+      unarchive:
+        src: "/oracledata/stage/{{ item.1.name | basename }}"
+        dest: "/oracledata/stage/{{ item.0.version }}/"
+        creates: "/oracledata/stage/{{ item.0.version }}/{{ item.1.creates }}"
+        remote_src: True
+        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'inventory') | map(attribute='gid') | first }}"
+      become: True
+      with_subelements:
+        - "{{ installation_files }}"
+        - files
+      tags:
+        - unzip_installation_files
+        - installation_files
+
+    - block:
+        - name: Install grid infrastructure binaries
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.grid_infrastructure.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "/stage/{{
+                   installation_files |
+                   selectattr('type', 'equalto', 'grid') |
+                   map(attribute='version') |
+                   first
+                 }}/grid/runInstaller
+                 {{
+                   installation_files |
+                   selectattr('type', 'equalto', 'grid') |
+                   map(attribute='installer_parameters') |
+                   first | join(' ')
+                 }}"
+          register: install_grid_binaries_result
+          changed_when: (install_grid_binaries_result.rc == 0 ) or (install_grid_binaries_result.rc == 6 )
+          failed_when: (install_grid_binaries_result.rc != 0) and (install_grid_binaries_result.rc != 6 )
+
+        - name: Run grid infrastructure root scripts
+          command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
+          with_items:
+            - /u01/app/oraInventory/orainstRoot.sh
+            - /u01/app/12.1.0/grid/root.sh
+
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: install_grid_binaries_result.stdout_lines
+      tags:
+        - install_grid
+        - rac1
+        - docker
+
+    - block:
+        - name: Install database binaries
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.database.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "/stage/{{
+                   installation_files |
+                   selectattr('type', 'equalto', 'database') |
+                   map(attribute='version') |
+                   first
+                 }}/database/runInstaller
+                 {{
+                   installation_files |
+                   selectattr('type', 'equalto', 'database') |
+                   map(attribute='installer_parameters') |
+                   first | join(' ')
+                 }}"
+          register: install_database_binaries_result
+          changed_when: (install_database_binaries_result.rc == 0 ) or (install_database_binaries_result.rc == 6 )
+          failed_when: (install_database_binaries_result.rc != 0) and (install_database_binaries_result.rc != 6 )
+
+        - name: Run database installer root scripts
+          command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
+          with_items:
+            - /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: install_database_binaries_result.stdout_lines
+      tags:
+        - install_database
+        - rac1
+        - docker
+
+    - name: Commit rac1 container to an image
+      command: "/usr/bin/docker commit {{ first_rac_node }} giinstalled"
+      tags:
+        - commit_rac1
+        - rac1
+        - docker
+
+    - name: Create rac1 container post binary install
+      docker_container:
+        name: "{{ first_rac_node }}"
+        hostname:  "{{ item.hostname }}"
+        image: giinstalled
+        state: started
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        command: "{{ item.command }}"
+        shm_size: "{{ item.shm_size }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', first_rac_node) | list }}"
+      tags:
+        - create_rac1_container_post_install
+        - rac1
+        - rac1_post_install
+        - docker
+
+    - name: Drop existing rac1 networks from docker host
+      command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+      become: True
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - delete_rac1_network_post_install
+        - rac1
+        - rac1_post_install
+        - networking
+
+    - name: Create dhclient service files
+      template:
+        src: dhclient.j2
+        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - add_rac1_dhclient_services_post_install
+        - rac1
+        - rac1_post_install
+        - networking
+        - docker
+
+    - block:
+        - name: Pull Docker network facts
+          docker_network:
+            name: "{{ item.name }}"
+          with_items:
+            - "{{ docker.networks }}"
+          register: docker_net_facts
+
+        - name: Add networks to rac1
+          command: >
+            {{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }}
+            br-{{ docker_net_facts.results |
+              selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) |
+              map(attribute='ansible_facts.Ansible_docker_network.Id') | first |
+              truncate(12, True, '') }}
+            -i {{ item.1.internal_network_name }}
+            -l {{ item.1.external_network_name }}
+            {{ item.0.name }}
+            {{ item.1.ipv4_address }}/{{ item.1.cidr }}
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('exists and is up' not in command_result.stdout)
+          failed_when: (command_result.rc != 0) and ('exists and is up' not in command_result.stdout)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+            - networks
+      tags:
+        - add_rac1_networks_post_install
+        - rac1
+        - rac1_post_install
+        - networking
+        - docker
+
+    - name: Enable dhclient for each network on rac1
+      command: >
+        /usr/bin/docker exec {{ item.0.name }}
+        /usr/bin/ln -s
+        /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+        /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - enable_rac1_dhclient_post_install
+        - rac1
+        - rac1_post_install
+        - dhclient
+        - docker
+
+    - name: Start dhclient for each network on rac1
+      command: "/usr/bin/docker exec {{ item.0.name }}
+                /usr/bin/systemctl start dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      register: command_result
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - networks
+      tags:
+        - start_rac1_dhclient_post_install
+        - rac1
+        - rac1_post_install
+        - dhclient
+        - docker
+
+    - name: Create rac2 container post binary install
+      docker_container:
+        name: "{{ item.name }}"
+        hostname:  "{{ item.hostname }}"
+        image: "{{ item.image }}"
+        state: started
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        command: "{{ item.command }}"
+        shm_size: "{{ item.shm_size }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+      tags:
+        - create_rac2_container
+        - rac2
+        - docker
+
+    - name: Drop existing rac2 networks from docker host
+      command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+      become: True
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+        - networks
+      tags:
+        - delete_rac2_network
+        - rac2
+        - networking
+
+    - name: Create dhclient service files
+      template:
+        src: dhclient.j2
+        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+        - networks
+      tags:
+        - add_rac2_dhclient_services
+        - rac2
+        - networking
+        - docker
+
+    - block:
+        - name: Pull Docker network facts
+          docker_network:
+            name: "{{ item.name }}"
+          with_items:
+            - "{{ docker.networks }}"
+          register: docker_net_facts
+
+        - name: Add networks to rac2
+          command: >
+            {{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }}
+            br-{{ docker_net_facts.results |
+              selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) |
+              map(attribute='ansible_facts.Ansible_docker_network.Id') | first |
+              truncate(12, True, '') }}
+            -i {{ item.1.internal_network_name }}
+            -l {{ item.1.external_network_name }}
+            {{ item.0.name }}
+            {{ item.1.ipv4_address }}/{{ item.1.cidr }}
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('exists and is up' not in command_result.stdout)
+          failed_when: (command_result.rc != 0) and ('exists and is up' not in command_result.stdout)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+            - networks
+      tags:
+        - add_rac2_networks
+        - rac2
+        - networking
+        - docker
+
+    - name: Enable dhclient for each network on rac2
+      command: >
+        /usr/bin/docker exec {{ item.0.name }}
+        /usr/bin/ln -s
+        /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+        /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+        - networks
+      tags:
+        - enable_rac2_dhclient
+        - rac2
+        - dhclient
+        - docker
+
+    - name: Start dhclient for each network on rac2
+      command: "/usr/bin/docker exec {{ item.0.name }}
+                /usr/bin/systemctl start dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      register: command_result
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+        - networks
+      tags:
+        - start_rac2_dhclient
+        - rac2
+        - dhclient
+        - docker
+
+    - name: Create temporary ssh key directory on docker host
+      file:  
+        state: directory
+        path: "/tmp/mykeys/.ssh"
+        mode: 0700
+      tags:
+        - ssh
+
+    - name: Remove ssh key pair files on docker host if they exist
+      file:  
+        state: absent
+        path: "{{ item }}"
+      with_items:
+        - "/tmp/mykeys/.ssh/id_rsa"
+        - "/tmp/mykeys/.ssh/id_rsa.pub"
+        - "/tmp/mykeys/.ssh/authorized_keys"
+      tags:
+        - ssh
+
+    - name: Generate temporary ssh key pair on docker host
+      command: "ssh-keygen -q -C '' -N '' -f /tmp/mykeys/.ssh/id_rsa"
+      tags:
+        - ssh
+
+    - name: Read in ssh public key
+      command: "cat /tmp/mykeys/.ssh/id_rsa.pub"
+      register: pubkey
+      tags:
+        - ssh
+
+    - name: Add the ssh public key to the authorized_keys file on docker host
+      lineinfile:
+        dest: /tmp/mykeys/.ssh/authorized_keys
+        state: present
+        create: True
+        mode: 0640
+        line: "{{ item }}" 
+      with_items:
+        - "{{ pubkey.stdout }}"
+      tags:
+        - ssh
+
+    - name: Copy .ssh directory to root home directory in each container
+      command: "/usr/bin/docker cp /tmp/mykeys/.ssh {{ item.name }}:/root/"
+      with_items:
+        - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+      tags:
+        - ssh
+
+    - name: Copy .ssh directory to grid home directory in each container
+      command: >
+               /usr/bin/docker cp
+               /tmp/mykeys/.ssh
+               {{ item.name
+               }}:/home/{{
+                 operating_system.grid_infrastructure.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }}
+      with_items:
+        - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+      tags:
+        - ssh
+
+    - name: Copy .ssh directory to database home directory in each container
+      command: >
+               /usr/bin/docker cp
+               /tmp/mykeys/.ssh
+               {{ item.name
+               }}:/home/{{
+                 operating_system.database.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }}
+      with_items:
+        - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+      tags:
+        - ssh
+
+    - name: Fix the ownership of the grid .ssh directory and files in each container
+      command: >
+               /usr/bin/docker exec
+               {{ item.name }}
+               /usr/bin/chown -R
+               {{
+                 operating_system.grid_infrastructure.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }}:{{
+                 operating_system.grid_infrastructure.groups |
+                 selectattr('title', 'equalto', 'inventory') |
+                 map(attribute='name') | first
+               }}
+               /home/{{
+                 operating_system.grid_infrastructure.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }}/.ssh
+      with_items:
+        - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+      tags:
+        - ssh
+
+    - name: Fix the ownership of the database .ssh directory and files in each container
+      command: >
+               /usr/bin/docker exec
+               {{ item.name }}
+               /usr/bin/chown -R
+               {{
+                 operating_system.database.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }}:{{
+                 operating_system.grid_infrastructure.groups |
+                 selectattr('title', 'equalto', 'inventory') |
+                 map(attribute='name') | first
+               }}
+               /home/{{
+                 operating_system.database.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }}/.ssh
+      with_items:
+        - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+      tags:
+        - ssh
