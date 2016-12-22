@@ -8,7 +8,7 @@
           with_subelements:
             - "{{ asm_disk_groups }}"
             - disks
-          when: item[1].type == "file"
+          when: item[1].aype == "file"
           register: asm_disk_files
           tags:
             - create_asm_files
@@ -239,7 +239,7 @@
         - rac1
         - networking
 
-    - name: Create dhclient service files
+    - name: Create dhclient service files for all rac node containers
       template:
         src: dhclient.j2
         dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
@@ -248,11 +248,10 @@
         mode: 0644
       become: True
       with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+        - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
         - networks
       tags:
-        - add_rac1_dhclient_services
-        - rac1
+        - add_dhclient_services
         - networking
         - docker
 
@@ -505,39 +504,6 @@
         - rac1_post_install
         - docker
 
-    - name: Drop existing rac1 networks from docker host
-      command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
-      become: True
-      register: command_result
-      changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
-      failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
-        - networks
-      tags:
-        - delete_rac1_network_post_install
-        - rac1
-        - rac1_post_install
-        - networking
-
-    - name: Create dhclient service files
-      template:
-        src: dhclient.j2
-        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
-        owner: root
-        group: root
-        mode: 0644
-      become: True
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
-        - networks
-      tags:
-        - add_rac1_dhclient_services_post_install
-        - rac1
-        - rac1_post_install
-        - networking
-        - docker
-
     - block:
         - name: Pull Docker network facts
           docker_network:
@@ -545,6 +511,16 @@
           with_items:
             - "{{ docker.networks }}"
           register: docker_net_facts
+
+        - name: Drop existing rac1 networks from docker host
+          command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+          failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', 'rac1') | list }}"
+            - networks
 
         - name: Add networks to rac1
           command: >
@@ -622,37 +598,6 @@
         - rac2
         - docker
 
-    - name: Drop existing rac2 networks from docker host
-      command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
-      become: True
-      register: command_result
-      changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
-      failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
-        - networks
-      tags:
-        - delete_rac2_network
-        - rac2
-        - networking
-
-    - name: Create dhclient service files
-      template:
-        src: dhclient.j2
-        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
-        owner: root
-        group: root
-        mode: 0644
-      become: True
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
-        - networks
-      tags:
-        - add_rac2_dhclient_services
-        - rac2
-        - networking
-        - docker
-
     - block:
         - name: Pull Docker network facts
           docker_network:
@@ -660,6 +605,16 @@
           with_items:
             - "{{ docker.networks }}"
           register: docker_net_facts
+
+        - name: Drop existing rac2 networks from docker host
+          command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+          failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', additional_rac_node) | list }}"
+            - networks
 
         - name: Add networks to rac2
           command: >

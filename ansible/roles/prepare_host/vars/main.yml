@@ -194,19 +194,19 @@ docker:
         - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
       networks:
         - name: pub
-          dhcp_hostname: rac1
+          dhcp_hostname: rac2
           dhclient_pid: /var/run/dhclient-eth1.pid
           ipv4_address: 0.0.0.0
           cidr: 24
           internal_network_name: eth1
-          external_network_name: rac1-pub
+          external_network_name: rac2-pub
         - name: priv
-          dhcp_hostname: rac1-priv
+          dhcp_hostname: rac2-priv
           dhclient_pid: /var/run/dhclient-eth2.pid
           ipv4_address: 0.0.0.0
           cidr: 24
           internal_network_name: eth2
-          external_network_name: rac1-priv
+          external_network_name: rac2-priv
       dns: 10.10.10.10
       shm_size: 2048m
       command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
