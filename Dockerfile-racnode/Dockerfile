@@ -7,6 +7,10 @@ ENV ["GRID_PASSWORD", "oracle_4U"]
 ENV ["ORACLE_PASSWORD", "oracle_4U"]
 
 
+###################################################################################
+##  System Updates
+###################################################################################
+
 # Update the operating system
 RUN ["yum", "-y", "update"]
 
@@ -39,6 +43,10 @@ RUN ["yum", "-y", "install", \
 RUN ["yum", "clean", "all"]
 
 
+###################################################################################
+##  Users and Groups
+###################################################################################
+
 # Add groups for grid infrastructure
 RUN ["groupadd", "--gid", "54421", "asmdba"]
 RUN ["groupadd", "--gid", "54422", "asmadmin"]
@@ -62,11 +70,71 @@ RUN echo "oracle:${ORACLE_PASSWORD}" | chpasswd
 ADD ["grid_security_limits.conf", "/etc/security/limits.conf.d/"]
 
 
+###################################################################################
+##  SSH Shared Keys
+###################################################################################
+
+# Create SSH shared key directory for the oracle user
+RUN ["mkdir", "-p", "-m", "0700", "/home/oracle/.ssh/"]
+
+
+# Generate SSH shared keys for the oracle user
+RUN ssh-keygen -q -C '' -N '' -f /home/oracle/.ssh/id_rsa
+
+
+# Create the authorized_keys file for the oracle user
+RUN cat /home/oracle/.ssh/id_rsa.pub > /home/oracle/.ssh/authorized_keys
+
+
+# Change ownership of the SSH shared key files for the oracle user
+RUN chown -R oracle:oinstall /home/oracle/.ssh
+
+
+# Change permissions of the authorized_keys file for the oracle user
+RUN ["chmod", "0640", "/home/oracle/.ssh/authorized_keys"]
+
+
+# Create SSH shared key directory for the grid user
+RUN ["mkdir", "-p", "-m", "0700", "/home/grid/.ssh/"]
+
+
+# Generate SSH shared keys for the grid user
+RUN ssh-keygen -q -C '' -N '' -f /home/grid/.ssh/id_rsa
+
+
+# Create the authorized_keys file for the grid user
+RUN cat /home/grid/.ssh/id_rsa.pub > /home/grid/.ssh/authorized_keys
+
+
+# Change ownership of the SSH shared key files for the grid user
+RUN chown -R grid:oinstall /home/grid/.ssh
+
+
+# Change permissions of the authorized_keys file for the grid user
+RUN ["chmod", "0640", "/home/grid/.ssh/authorized_keys"]
+
+
+# Generate SSH host ECDSA shared keys
+RUN ssh-keygen -q -C '' -N '' -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key
+
+
+# Create the ssh_known_hosts file
+RUN for NODE in rac1 rac2; do (echo -n "$NODE " && cat /etc/ssh/ssh_host_ecdsa_key.pub) >> /etc/ssh/ssh_known_hosts; done
+
+
+###################################################################################
+##  Files and Directories
+###################################################################################
+
 # Create installation root directory
 RUN ["mkdir", "-p", "/u01"]
 RUN ["chgrp", "oinstall", "/u01"]
 RUN ["chmod", "0775", "/u01"]
 
+
+###################################################################################
+##  Misc
+###################################################################################
 
 # Allow non-privileged users the ability to execute the ping command
 RUN ["chmod", "4755", "/bin/ping"]
