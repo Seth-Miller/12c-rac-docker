@@ -546,6 +546,7 @@
         - rac1_post_install
         - networking
         - docker
+        - start_nodes
 
     - name: Enable dhclient for each network on rac1
       command: >
@@ -565,6 +566,7 @@
         - rac1_post_install
         - dhclient
         - docker
+        - start_nodes
 
     - name: Start dhclient for each network on rac1
       command: "/usr/bin/docker exec {{ item.0.name }}
@@ -579,6 +581,7 @@
         - rac1_post_install
         - dhclient
         - docker
+        - start_nodes
 
     - name: Create rac2 container post binary install
       docker_container:
@@ -639,6 +642,7 @@
         - rac2
         - networking
         - docker
+        - start_nodes
 
     - name: Enable dhclient for each network on rac2
       command: >
@@ -657,6 +661,7 @@
         - rac2
         - dhclient
         - docker
+        - start_nodes
 
     - name: Start dhclient for each network on rac2
       command: "/usr/bin/docker exec {{ item.0.name }}
@@ -670,4 +675,88 @@
         - rac2
         - dhclient
         - docker
+        - start_nodes
 
+    - block:
+        - name: Configure grid infrastructure binaries
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.grid_infrastructure.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "/u01/app/12.1.0/grid/crs/config/config.sh
+                 {{
+                   installation_files |
+                   selectattr('type', 'equalto', 'grid') |
+                   map(attribute='configuration_parameters') |
+                   first | join(' ')
+                 }}"
+          register: configure_grid_binaries_result
+          changed_when: (configure_grid_binaries_result.rc == 0 ) or (configure_grid_binaries_result.rc == 6 )
+          failed_when: (configure_grid_binaries_result.rc != 0) and (configure_grid_binaries_result.rc != 6 )
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: configure_grid_binaries_result.stdout_lines
+      tags:
+        - configure_grid
+        - docker
+
+    - block:
+        - name: Modify the root script to show output
+          command: "/usr/bin/docker exec {{ item.name }} sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
+          with_items:
+            - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+          
+        - name: Run grid infrastructure root scripts
+          command: "/usr/bin/docker exec {{ item.name }} /u01/app/12.1.0/grid/root.sh"
+          register: configure_grid_root_result
+          with_items:
+            - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: configure_grid_root_result.stdout_lines
+      tags:
+        - configure_grid_root
+        - docker
+
+    - block:
+        - name: Create grid tools config response file
+          lineinfile:
+            dest: "{{ operating_system.rac_node_directory }}/tools_config.rsp"
+            state: present
+            create: yes
+            line: "{{ item }}"
+            mode: 0644
+          become: True
+          with_items:
+            - "{{ installation_files | selectattr('type', 'equalto', 'grid') | map(attribute='tools_configuration_parameters') | first | list }}"
+
+        - name: Configure grid infrastructure tools
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.grid_infrastructure.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c "/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
+          register: configure_grid_tools_result
+          #changed_when: (configure_grid_tools_result.rc == 0 ) or (configure_grid_tools_result.rc == 6 )
+          #failed_when: (configure_grid_tools_result.rc != 0) and (configure_grid_tools_result.rc != 6 )
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: configure_grid_tools_result.stdout_lines
+
+        - name: Remove grid tools config response file
+          file:
+            path: "{{ operating_system.rac_node_directory }}/tools_config.rsp"
+            state: absent
+          become: True
+      tags:
+        - configure_grid_tools
+        - docker
