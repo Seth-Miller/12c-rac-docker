@@ -99,7 +99,7 @@ installation_files:
       - oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS
       - oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com
       - oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com
-      - oracle.install.crs.config.clusterNodes=rac1.example.com:AUTO,rac2.example.com:AUTO
+      - oracle.install.crs.config.clusterNodes=rac1.example.com:AUTO
       - oracle.install.crs.config.networkInterfaceList=eth1:10.10.10.0:1,eth2:11.11.11.0:2
       - oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE
       - oracle.install.crs.config.useIPMI=false
@@ -223,7 +223,7 @@ docker:
 
     - name: rac2
       hostname: rac2
-      type: rac_node
+      type: skip
       designation: additional
       image: giinstalled
       volumes:
