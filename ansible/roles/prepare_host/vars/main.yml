@@ -89,7 +89,6 @@ installation_files:
       - oracle.install.asm.OSDBA=asmdba
       - oracle.install.asm.OSOPER=
       - oracle.install.asm.OSASM=asmadmin
-      - SELECTED_LANGUAGES=en
       - oracle.install.crs.config.gpnp.scanName=clu-121-scan.clu-121.example.com
       - oracle.install.crs.config.gpnp.scanPort=1521
       - oracle.install.crs.config.ClusterType=STANDARD
@@ -113,6 +112,9 @@ installation_files:
     tools_configuration_parameters:
       - oracle.assistants.asm|S_ASMPASSWORD=oracle_4U
       - oracle.assistants.asm|S_ASMMONITORPASSWORD=oracle_4U
+      - oracle.crs|oracle_install_crs_ConfigureMgmtDB=false
+      - oracle.crs|oracle_install_crs_MgmtDB_CDB=false
+      - oracle.crs|oracle_install_crs_MgmtDB_Std=false
 
   - type: database
     version: 12.1.0.2

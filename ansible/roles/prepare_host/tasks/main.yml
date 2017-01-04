@@ -621,10 +621,6 @@
           register: configure_grid_root_result
           with_items:
             - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
-      always:
-        - name: Print readable previous command output
-          debug:
-            var: configure_grid_root_result.stdout_lines
       tags:
         - configure_grid_root
         - docker
@@ -651,8 +647,6 @@
                    first
                  }} -c "/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
           register: configure_grid_tools_result
-          #changed_when: (configure_grid_tools_result.rc == 0 ) or (configure_grid_tools_result.rc == 6 )
-          #failed_when: (configure_grid_tools_result.rc != 0) and (configure_grid_tools_result.rc != 6 )
       always:
         - name: Print readable previous command output
           debug:
