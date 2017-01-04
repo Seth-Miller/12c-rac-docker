@@ -1,0 +1,112 @@
+
+    - name: Create rac_nodes custom directories
+      file:
+        state: directory
+        path: "{{ operating_system.rac_node_directory }}"
+        mode: 0777
+      become: True
+      tags:
+        - create_rac_nodes_custom_dirs
+
+    - name: Copy pipework script
+      copy:
+        src: "{{ operating_system.pipework_file }}" 
+        dest: "{{ operating_system.pipework_directory }}/"
+        mode: 0744
+      become: True
+      tags:
+        - copy_pipework_file
+
+    - name: Create dhclient service files for rac node container
+      template:
+        src: dhclient.j2
+        dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
+      tags:
+        - add_dhclient_services
+
+    - name: Create rac node container
+      docker_container:
+        name: "{{ item.name }}"
+        hostname:  "{{ item.hostname }}"
+        image: giinstalled
+        state: started
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        command: "{{ item.command }}"
+        shm_size: "{{ item.shm_size }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+      tags:
+        - create_rac_node_container
+
+    - block:
+        - name: Pull Docker network facts
+          docker_network:
+            name: "{{ item.name }}"
+          with_items:
+            - "{{ docker.networks }}"
+          register: docker_net_facts
+
+        - name: Drop existing rac node networks from docker host
+          command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
+          failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+            - networks
+
+        - name: Add networks to rac node
+          command: >
+            {{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }}
+            br-{{ docker_net_facts.results |
+              selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) |
+              map(attribute='ansible_facts.Ansible_docker_network.Id') | first |
+              truncate(12, True, '') }}
+            -i {{ item.1.internal_network_name }}
+            -l {{ item.1.external_network_name }}
+            {{ item.0.name }}
+            {{ item.1.ipv4_address }}/{{ item.1.cidr }}
+          become: True
+          register: command_result
+          changed_when: (command_result.rc == 0 ) and ('exists and is up' not in command_result.stdout)
+          failed_when: (command_result.rc != 0) and ('exists and is up' not in command_result.stdout)
+          with_subelements:
+            - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+            - networks
+      tags:
+        - add_rac_node_networks
+
+    - name: Enable dhclient for each network on rac node
+      command: >
+        /usr/bin/docker exec {{ item.0.name }}
+        /usr/bin/ln -s
+        /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+        /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
+      tags:
+        - enable_rac_node_dhclient
+
+    - name: Start dhclient for each network on rac node
+      command: "/usr/bin/docker exec {{ item.0.name }}
+                /usr/bin/systemctl start dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      register: command_result
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
+      tags:
+        - start_rac_node_dhclient
