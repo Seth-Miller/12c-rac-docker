@@ -7,44 +7,33 @@
   tasks:
     - include_vars: main.yml
 
-    - name: Create ASM file devices
-      file:
-        state: touch
-        path: "{{ item[1].path }}"
-        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
-        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
-      become: true
-      with_subelements:
-        - "{{ asm_disk_groups }}"
-        - disks
-      when: item[1].type == "file"
-      register: asm_disk_files
-    
-    - debug:
-        msg: ""
+    - docker_network:
+        name: "{{ item.name }}"
+        appends: True
+        state: present
+        ipam_options:
+          subnet: "{{ item.subnet }}/{{ item.cidr }}"
       with_items:
-        - "{{ asm_disk_files.results }}"
+        - "{{ docker.networks }}"
+      register: network_stuff
 
-    - debug:
-        msg: "{{ item }}"
-      with_items:
-        - "{{ asm_disk_files.results }}"
-      when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
-
-    - name: Inflate ASM file devices
-      command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
-      become: true
-      with_items:
-        - "{{ asm_disk_files.results }}"
-      when: ( item.changed == true ) and ( item.state == 'file' ) and ( item.size == 0 )
-
-    - name: Check ASM file devices
-      file:
-        state: file
-        path: "{{ item[1].path }}"
-        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
-        group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
-      with_subelements:
-        - "{{ asm_disk_groups }}"
-        - disks
-      when: item[1].type == "file"
+    - name: Create container
+      docker_container:
+        name: bind
+        hostname: bind
+        image: sethmiller/bind
+        state: started
+        restart: True
+        interactive: True
+        tty: True
+        published_ports:
+          - 53:53/tcp
+          - 53:53/udp
+        volumes:
+          - /srv/docker/bind:/data
+        env:
+          WEBMIN_ENABLED: "false"
+        command: "-4"
+        networks:
+          - name: "{{ docker.networks | selectattr('type', 'equalto', 'public') | map(attribute='name') | first }}"
+      with_sequence: count=2
