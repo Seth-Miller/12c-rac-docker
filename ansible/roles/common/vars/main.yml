@@ -56,6 +56,24 @@ operating_system:
         gid: 54322
 
 installation_files:
+  - type: opatch
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/p6880880_122010_Linux-x86-64.zip
+        creates: OPatch/opatch
+
+  - type: bundle
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/p23615334_121020_Linux-x86-64.zip
+        creates: 23615334/23144544/23144544/files/rdbms/lib
+
+  - type: oneoff
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/p19404068_121027DBEngSysandDBIM_Linux-x86-64.zip
+        creates: 19404068/files/rdbms/lib
+
   - type: grid
     version: 12.1.0.2
     files:

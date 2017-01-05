@@ -90,6 +90,40 @@
         - rac1
         - docker
 
+    - name: Update OPatch for grid infrastructure
+      command: >
+             /usr/bin/docker exec {{ first_rac_node }} su -
+             {{
+               operating_system.grid_infrastructure.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "cp -a /stage/{{
+               installation_files |
+               selectattr('type', 'equalto', 'opatch') |
+               map(attribute='version') |
+               first
+             }}/OPatch/* /u01/app/12.1.0/grid/OPatch/"
+      tags:
+        - update_opatch_for_grid
+
+    - name: Update OPatch for database
+      command: >
+             /usr/bin/docker exec {{ first_rac_node }} su -
+             {{
+               operating_system.database.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "cp -a /stage/{{
+               installation_files |
+               selectattr('type', 'equalto', 'opatch') |
+               map(attribute='version') |
+               first
+             }}/OPatch/* /u01/app/oracle/product/12.1.0/dbhome_1/OPatch/"
+      tags:
+        - update_opatch_for_database
+
     - name: Commit rac1 container to an image
       command: "/usr/bin/docker commit {{ first_rac_node }} giinstalled"
       tags:
