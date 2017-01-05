@@ -225,6 +225,7 @@
         dest: "/oracledata/stage/{{ item.0.version }}/"
         creates: "/oracledata/stage/{{ item.0.version }}/{{ item.1.creates }}"
         remote_src: True
+        owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
         group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'inventory') | map(attribute='gid') | first }}"
       become: True
       with_subelements:
