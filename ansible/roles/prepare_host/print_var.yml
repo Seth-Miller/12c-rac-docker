@@ -8,13 +8,22 @@
     - include_vars: main.yml
 
     - debug:
-        msg: |
-             {% for diskgroup in asm_disk_groups %} 
-               {% for disk in diskgroup.disks %}
-                 {% if disk.type == 'block' %}
-                   KERNEL=="{{ disk.rawpath }}", SYMLINK+="{{ disk.udevpath }}", GROUP="{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid'    ) | first }}"
-                 {% endif %}
-               {% endfor %}
-             {% endfor %}
-#      with_items:
-#        - "{{ testvar }}"
+        msg: >-
+             /usr/bin/docker exec {{ first_rac_node }} su -
+             {{
+               operating_system.grid_infrastructure.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "/stage/{{
+               installation_files |
+               selectattr('type', 'equalto', 'grid') |
+               map(attribute='version') |
+               first
+             }}/grid/runInstaller
+             {{
+               installation_files |
+               selectattr('type', 'equalto', 'grid') |
+               map(attribute='installer_parameters') |
+               first | join(' ')
+             }}"
