@@ -1,0 +1,266 @@
+
+
+
+
+asm_disk_groups:
+  - group: DATA
+    disks:
+      - rawpath: /dev/sdd
+        udevpath: /dev/asmdisks/asm-clu-121-DATA-disk1
+        type: block
+      - rawpath: /dev/sde
+        udevpath: /dev/asmdisks/asm-clu-121-DATA-disk2
+        type: block
+      - rawpath: /dev/sdf
+        udevpath: /dev/asmdisks/asm-clu-121-DATA-disk3
+        type: block
+  - group: NDATA
+    disks:
+      - path: /oraclenfs/asm-clu-121-NDATA-disk1
+        type: file
+      - path: /oraclenfs/asm-clu-121-NDATA-disk2
+        type: file
+      - path: /oraclenfs/asm-clu-121-NDATA-disk3
+        type: file
+
+operating_system:
+  rac_node_directory: /srv/docker/rac_nodes/custom_services
+  pipework_directory: /srv/docker/scripts
+  pipework_file: pipework
+  grid_infrastructure:
+    users:
+      - name: grid
+        title: owner
+        uid: 54421
+    groups:
+      - name: oinstall
+        title: inventory
+        gid: 54321
+      - name: asmdba
+        title: osdba
+        gid: 54421
+      - name: asmoper
+        title: osoper
+        gid: 54423
+      - name: asmadmin
+        title: osasm
+        gid: 54422
+  database:
+    users:
+      - name: oracle
+        title: owner
+        uid: 54321
+    groups:
+      - name: dba
+        title: osdba
+        gid: 54322
+
+installation_files:
+  - type: grid
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_1of2.zip
+        creates: grid/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_2of2.zip
+        creates: grid/stage/Components/oracle.has.crs/12.1.0.2.0
+    installer_parameters:
+      - -waitforcompletion
+      - -ignoreSysPrereqs
+      - -silent
+      - -force
+      - INVENTORY_LOCATION=/u01/app/oraInventory
+      - UNIX_GROUP_NAME=oinstall
+      - ORACLE_HOME=/u01/app/12.1.0/grid
+      - ORACLE_BASE=/u01/app/grid
+      - oracle.install.option=CRS_SWONLY
+      - oracle.install.asm.OSDBA=asmdba
+      - oracle.install.asm.OSOPER=
+      - oracle.install.asm.OSASM=asmadmin
+    configuration_parameters:
+      - -waitforcompletion
+      - -ignoreSysPrereqs
+      - -silent
+      - -force
+      - INVENTORY_LOCATION=/u01/app/oraInventory
+      - UNIX_GROUP_NAME=oinstall
+      - ORACLE_HOME=/u01/app/12.1.0/grid
+      - ORACLE_BASE=/u01/app/grid
+      - oracle.install.option=CRS_CONFIG
+      - oracle.install.asm.OSDBA=asmdba
+      - oracle.install.asm.OSOPER=
+      - oracle.install.asm.OSASM=asmadmin
+      - oracle.install.crs.config.gpnp.scanName=clu-121-scan.clu-121.example.com
+      - oracle.install.crs.config.gpnp.scanPort=1521
+      - oracle.install.crs.config.ClusterType=STANDARD
+      - oracle.install.crs.config.clusterName=clu-121
+      - oracle.install.crs.config.gpnp.configureGNS=true
+      - oracle.install.crs.config.autoConfigureClusterNodeVIP=true
+      - oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS
+      - oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com
+      - oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com
+      - oracle.install.crs.config.clusterNodes=rac1.example.com:AUTO
+      - oracle.install.crs.config.networkInterfaceList=eth1:10.10.10.0:1,eth2:11.11.11.0:2
+      - oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE
+      - oracle.install.crs.config.useIPMI=false
+      - oracle.install.asm.SYSASMPassword=oracle_4U
+      - oracle.install.asm.monitorPassword=oracle_4U
+      - oracle.install.asm.diskGroup.name=DATA
+      - oracle.install.asm.diskGroup.redundancy=EXTERNAL
+      - oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3
+      - oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*
+      - oracle.install.asm.useExistingDiskGroup=false
+    tools_configuration_parameters:
+      - oracle.assistants.asm|S_ASMPASSWORD=oracle_4U
+      - oracle.assistants.asm|S_ASMMONITORPASSWORD=oracle_4U
+      - oracle.crs|oracle_install_crs_ConfigureMgmtDB=false
+      - oracle.crs|oracle_install_crs_MgmtDB_CDB=false
+      - oracle.crs|oracle_install_crs_MgmtDB_Std=false
+
+  - type: database
+    version: 12.1.0.2
+    files:
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_1of2.zip
+        creates: database/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
+      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_2of2.zip
+        creates: database/stage/Components/oracle.rdbms/12.1.0.2.0
+    installer_parameters:
+      - -waitforcompletion
+      - -ignoreSysPrereqs
+      - -silent
+      - -force
+      - INVENTORY_LOCATION=/u01/app/oraInventory
+      - UNIX_GROUP_NAME=oinstall
+      - ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1
+      - ORACLE_BASE=/u01/app/oracle
+      - oracle.install.option=INSTALL_DB_SWONLY
+      - oracle.install.db.InstallEdition=EE
+      - oracle.install.db.DBA_GROUP=dba
+      - oracle.install.db.BACKUPDBA_GROUP=dba
+      - oracle.install.db.DGDBA_GROUP=dba
+      - oracle.install.db.KMDBA_GROUP=dba
+      - DECLINE_SECURITY_UPDATES=true
+
+docker:
+  networks:
+    - type: public
+      name: pub
+      subnet: 10.10.10.0
+      cidr: 24
+    - type: private
+      name: priv
+      subnet: 11.11.11.0
+      cidr: 24
+
+  containers: 
+    - name: bind
+      hostname: bind
+      type:
+      image: sethmiller/bind
+      ports:
+        - "53:53/tcp"
+        - "53:53/udp"
+      volumes:
+        - "/srv/docker/bind:/data"
+      networks:
+        - name: "pub"
+          ipv4_address: "10.10.10.10"
+      command: "-4"
+      env:
+        WEBMIN_ENABLED: "false"
+
+    - name: dhcpd
+      hostname: dhcpd
+      type:
+      image: networkboot/dhcpd
+      config_directory: /srv/docker/dhcpd
+      config_file: dhcpd.conf
+      volumes:
+        - "/srv/docker/dhcpd:/data"
+        - "/srv/docker/bind/bind/etc:/keys"
+      networks:
+        - name: "pub"
+          ipv4_address: "10.10.10.11"
+        - name: "priv"
+          ipv4_address: "11.11.11.11"
+      dns: 10.10.10.10
+
+    - name: nfs
+      hostname: nfs
+      type:
+      image: sethmiller/nfs
+      config_directory: /srv/docker/nfs
+      config_file: ganesha.conf
+      volumes:
+        - "/srv/docker/nfs:/etc/ganesha"
+        - "/oraclenfs:/oraclenfs"
+      dns: 10.10.10.10
+
+    - name: rac1
+      hostname: rac1
+      type: rac_node
+      designation: first
+      image: sethmiller/giready
+      volumes:
+        - "/srv/docker/rac_nodes/custom_services:/usr/lib/custom_services"
+        - "/oracledata/stage:/stage"
+        - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+      networks:
+        - name: pub
+          dhcp_hostname: rac1
+          dhclient_pid: /var/run/dhclient-eth1.pid
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth1
+          external_network_name: rac1-pub
+        - name: priv
+          dhcp_hostname: rac1-priv
+          dhclient_pid: /var/run/dhclient-eth2.pid
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth2
+          external_network_name: rac1-priv
+      dns: 10.10.10.10
+      shm_size: 2048m
+      command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
+
+    - name: rac2
+      hostname: rac2
+      type: skip
+      designation: additional
+      image: giinstalled
+      volumes:
+        - "/srv/docker/rac_nodes/custom_services:/usr/lib/custom_services"
+        - "/oracledata/stage:/stage"
+        - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+      networks:
+        - name: pub
+          dhcp_hostname: rac2
+          dhclient_pid: /var/run/dhclient-eth1.pid
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth1
+          external_network_name: rac2-pub
+        - name: priv
+          dhcp_hostname: rac2-priv
+          dhclient_pid: /var/run/dhclient-eth2.pid
+          ipv4_address: 0.0.0.0
+          cidr: 24
+          internal_network_name: eth2
+          external_network_name: rac2-priv
+      dns: 10.10.10.10
+      shm_size: 2048m
+      command: "/usr/lib/systemd/systemd --system --unit=multi-user.target"
+
+
+first_rac_node: >-
+     {{ docker.containers |
+     selectattr('designation', 'defined') |
+     selectattr('type', 'equalto', 'rac_node') |
+     selectattr('designation', 'equalto', 'first') |
+     map(attribute='name') | first }}
+additional_rac_node: >-
+     {{ docker.containers |
+     selectattr('designation', 'defined') |
+     selectattr('type', 'equalto', 'rac_node') |
+     selectattr('designation', 'equalto', 'additional') |
+     map(attribute='name') | first }}
