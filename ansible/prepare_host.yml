@@ -3,4 +3,5 @@
    - hosts: all
      any_errors_fatal: True
      roles:
+       - common
        - prepare_host
