@@ -106,6 +106,7 @@
              }}/OPatch/* /u01/app/12.1.0/grid/OPatch/"
       tags:
         - update_opatch_for_grid
+        - opatch
 
     - name: Update OPatch for database
       command: >
@@ -123,6 +124,67 @@
              }}/OPatch/* /u01/app/oracle/product/12.1.0/dbhome_1/OPatch/"
       tags:
         - update_opatch_for_database
+        - opatch
+
+    - name: Apply bundle patch to grid infrastructure
+      command: >
+             /usr/bin/docker exec {{ first_rac_node }} su -
+             {{
+               operating_system.grid_infrastructure.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "
+             /u01/app/12.1.0/grid/OPatch/opatch apply /stage/{{
+               installation_files |
+               selectattr('type', 'equalto', 'bundle') |
+               map(attribute='version') |
+               first
+             }}/{{ item }} -oh /u01/app/12.1.0/grid -silent"
+      with_items:
+        - "{{ installation_files | selectattr('type', 'equalto', 'bundle') | map(attribute='patch_numbers') | first }}"
+      tags:
+        - apply_bundle_patch_to_grid
+
+    - name: Apply bundle patch to database
+      command: >
+             /usr/bin/docker exec {{ first_rac_node }} su -
+             {{
+               operating_system.database.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "
+             /u01/app/oracle/product/12.1.0/dbhome_1/OPatch/opatch apply /stage/{{
+               installation_files |
+               selectattr('type', 'equalto', 'bundle') |
+               map(attribute='version') |
+               first
+             }}/{{ item }} -oh /u01/app/oracle/product/12.1.0/dbhome_1 -silent"
+      with_items:
+        - "{{ installation_files | selectattr('type', 'equalto', 'bundle') | map(attribute='patch_numbers') | first }}"
+      tags:
+        - apply_bundle_patch_to_database
+
+    - name: Apply one-off patches to database
+      command: >
+             /usr/bin/docker exec {{ first_rac_node }} su -
+             {{
+               operating_system.database.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "
+             /u01/app/oracle/product/12.1.0/dbhome_1/OPatch/opatch apply /stage/{{
+               installation_files |
+               selectattr('type', 'equalto', 'oneoff') |
+               map(attribute='version') |
+               first
+             }}/{{ item }} -oh /u01/app/oracle/product/12.1.0/dbhome_1 -silent"
+      with_items:
+        - "{{ installation_files | selectattr('type', 'equalto', 'oneoff') | map(attribute='patch_numbers') | first }}"
+      tags:
+        - apply_oneoff_patches_to_database
 
     - name: Commit rac1 container to an image
       command: "/usr/bin/docker commit {{ first_rac_node }} giinstalled"
