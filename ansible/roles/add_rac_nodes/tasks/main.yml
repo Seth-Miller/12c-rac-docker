@@ -36,3 +36,14 @@
       tags:
         - configure_grid_add_node_root
 
+    - name: Relink database binaries for RAC
+      command: >
+             /usr/bin/docker exec rac2 su -
+             {{
+               operating_system.database.users |
+               selectattr('title', 'equalto', 'owner') |
+               map(attribute='name') |
+               first
+             }} -c "export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
+      tags:
+        - relink_database_binaries_for_rac
