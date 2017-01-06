@@ -94,8 +94,3 @@
       tags:
         - relink_database_binaries_for_rac
         - docker
-
-    - name: Create rac2 container post binary install
-      include: ../../common/tasks/start_rac_node.yml this_rac_node=rac2 this_image=giinstalled
-      tags:
-        - create_rac2_container
