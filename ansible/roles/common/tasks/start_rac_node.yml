@@ -10,7 +10,7 @@
 
     - name: Copy pipework script
       copy:
-        src: "{{ operating_system.pipework_file }}" 
+        src: "../../common/files/{{ operating_system.pipework_file }}" 
         dest: "{{ operating_system.pipework_directory }}/"
         mode: 0744
       become: True
@@ -19,7 +19,7 @@
 
     - name: Create dhclient service files for rac node container
       template:
-        src: dhclient.j2
+        src: ../../common/templates/dhclient.j2
         dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
         owner: root
         group: root
@@ -49,7 +49,7 @@
 
     - name: Create asm disk udev configuration file
       template:
-        src: 99-asm-disks.rules.j2
+        src: ../../common/templates/99-asm-disks.rules.j2
         dest: "{{ operating_system.rac_node_directory }}/99-asm-disk.rules"
         owner: root
         group: root
