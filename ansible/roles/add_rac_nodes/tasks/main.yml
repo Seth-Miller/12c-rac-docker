@@ -1,5 +1,38 @@
 
-    - name: Create rac2 container post binary install
+    - name: Create new rac node container
       include: ../../common/tasks/start_rac_node.yml this_rac_node=rac2 this_image=giinstalled
       tags:
         - create_rac2_container
+
+    - block:
+        - name: Add new container into cluster
+          command: >
+                 /usr/bin/docker exec {{ first_rac_node }} su -
+                 {{
+                   operating_system.grid_infrastructure.users |
+                   selectattr('title', 'equalto', 'owner') |
+                   map(attribute='name') |
+                   first
+                 }} -c '/u01/app/12.1.0/grid/addnode/addnode.sh
+                 "CLUSTER_NEW_NODES={rac2}"
+                 "CLUSTER_NEW_VIRTUAL_HOSTNAMES={rac2-vip}"
+                 -waitforcompletion -silent -ignoreSysPrereqs -force -noCopy'
+          register: add_new_node_result
+          changed_when: (add_new_node_result.rc == 0 ) or (add_new_node_result.rc == 6 )
+          failed_when: (add_new_node_result.rc != 0) and (add_new_node_result.rc != 6 )
+      always:
+        - name: Print readable previous command output
+          debug:
+            var: add_new_node_result.stdout_lines
+      tags:
+        - add_new_node_to_cluster
+
+    - block:
+        - name: Modify the root script to show output
+          command: "/usr/bin/docker exec rac2 sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
+          
+        - name: Run grid infrastructure root scripts
+          command: "/usr/bin/docker exec rac2 /u01/app/12.1.0/grid/root.sh"
+      tags:
+        - configure_grid_add_node_root
+
