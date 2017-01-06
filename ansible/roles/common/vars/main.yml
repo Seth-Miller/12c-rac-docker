@@ -1,7 +1,4 @@
 
-
-
-
 asm_disk_groups:
   - group: DATA
     disks:
@@ -59,7 +56,7 @@ installation_files:
   - type: opatch
     version: 12.1.0.2
     files:
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/p6880880_122010_Linux-x86-64.zip
+      - name: "{{ file_locations.file1 }}"
         creates: OPatch/opatch
 
   - type: bundle
@@ -71,7 +68,7 @@ installation_files:
       - 23615334/23054341
       - 23615334/23520664
     files:
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/p23615334_121020_Linux-x86-64.zip
+      - name: "{{ file_locations.file2 }}"
         creates: 23615334/23144544/23144544/files/rdbms/lib
 
   - type: oneoff
@@ -79,15 +76,15 @@ installation_files:
     patch_numbers:
       - 19404068
     files:
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/p19404068_121027DBEngSysandDBIM_Linux-x86-64.zip
+      - name:  "{{ file_locations.file3 }}"
         creates: 19404068/files/rdbms/lib
 
   - type: grid
     version: 12.1.0.2
     files:
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_1of2.zip
+      - name: "{{ file_locations.file4 }}"
         creates: grid/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_grid_2of2.zip
+      - name: "{{ file_locations.file5 }}"
         creates: grid/stage/Components/oracle.has.crs/12.1.0.2.0
     installer_parameters:
       - -waitforcompletion
@@ -145,9 +142,9 @@ installation_files:
   - type: database
     version: 12.1.0.2
     files:
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_1of2.zip
+      - name: "{{ file_locations.file6 }}"
         creates: database/stage/Components/oracle.oraolap.dbscripts/12.1.0.2.0
-      - name: http://artifactory-master.hrous.sen.symantec.com:8081/artifactory/venice_external/oracle/linux/linuxamd64_12102_database_2of2.zip
+      - name: "{{ file_locations.file7 }}"
         creates: database/stage/Components/oracle.rdbms/12.1.0.2.0
     installer_parameters:
       - -waitforcompletion

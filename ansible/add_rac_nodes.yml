@@ -2,6 +2,8 @@
 
    - hosts: all
      any_errors_fatal: True
+     vars_files:
+       - roles/common/vars/files.yml
      roles:
        - common
        - add_rac_nodes
