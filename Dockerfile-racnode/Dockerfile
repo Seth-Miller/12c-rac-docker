@@ -48,16 +48,30 @@ RUN ["yum", "clean", "all"]
 ###################################################################################
 
 # Add groups for grid infrastructure
+RUN ["groupadd", "--force", "--gid", "54321", "oinstall"]
+RUN ["groupmod", "--gid", "54321", "oinstall"]
 RUN ["groupadd", "--gid", "54421", "asmdba"]
 RUN ["groupadd", "--gid", "54422", "asmadmin"]
+RUN ["groupadd", "--gid", "54423", "asmoper"]
+
+
+# Add groups for database
+RUN ["groupadd", "--force", "--gid", "54322", "dba"]
+RUN ["groupmod", "--gid", "54322", "dba"]
+RUN ["groupadd", "--gid", "54323", "oper"]
+RUN ["groupadd", "--gid", "54324", "backupdba"]
+RUN ["groupadd", "--gid", "54325", "dgdba"]
+RUN ["groupadd", "--gid", "54326", "kmdba"]
 
 
 # Add grid infrastructure owner
-RUN ["useradd", "--create-home", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,asmadmin", "grid"]
+RUN ["useradd", "--create-home", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,asmadmin,asmoper", "grid"]
+RUN ["usermod", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,asmadmin,asmoper", "grid"]
 
 
-# Add groups to database home owner
-RUN ["usermod", "--append", "--groups", "asmdba", "oracle"]
+# Add database owner
+RUN ["useradd", "--create-home", "--uid", "54321", "--gid", "oinstall", "--groups", "dba,asmdba,oper,backupdba,dgdba,kmdba", "oracle"]
+RUN ["usermod", "--uid", "54321", "--gid", "oinstall", "--groups", "dba,asmdba,oper,backupdba,dgdba,kmdba", "oracle"]
 
 
 # Give grid and oracle users passwords
