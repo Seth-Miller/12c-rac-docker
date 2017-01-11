@@ -41,7 +41,6 @@
           with_items:
             - /u01/app/oraInventory/orainstRoot.sh
             - /u01/app/12.1.0/grid/root.sh
-
       always:
         - name: Print readable previous command output
           debug:
