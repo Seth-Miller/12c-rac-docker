@@ -1,0 +1,17 @@
+
+
+- hosts: all
+  gather_facts: False
+  vars_files:
+    - ../roles/common/vars/main.yml
+    - ../roles/common/vars/files.yml
+
+  tasks:
+
+    - debug:
+        msg: >
+             {{
+               installation_files |
+               selectattr('type', 'equalto', 'database') |
+               map(attribute='installer_parameters') | first
+             }}
