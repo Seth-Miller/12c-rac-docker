@@ -11,17 +11,6 @@ The passwords for the non-privileged user accounts are all set to `oracle_4U`.
 This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions on how to use CoreOS to build this project.
 
 
-# Pipework
-The RAC containers use a script called pipework to connect the custom docker networks to the containers. Because the pipework script is working with network namespaces, it must be run as root.
-```
-sudo mkdir -p /srv/docker/pipework
-
-sudo curl -L -o /srv/docker/pipework/#1 https://raw.githubusercontent.com/jpetazzo/pipework/master/{pipework}
-
-sudo chmod 744 /srv/docker/pipework/pipework
-```
-
-
 # Oracle installation files
 Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage`.
 
@@ -221,13 +210,13 @@ sethmiller/giready \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
 ```
 
-Add the two custom networks to the RAC node container. I initially tried to use the `docker network connect` commands that were used for the DHCPD container but the name of the network adapter must be consistent in all the RAC node container and `docker network connect` does not allow you to specify an adapter name. Pipework is essentially doing exactly what `docker network connect` does with the additional abilities to specify the network interface name both inside the container and on the host as well not giving the new adapters IPs so the IPs can come from the dhcpd container. Unlike the native docker network functions, the pipework virtual adapters are not deleted automatically when the container is removed. There can be consequences if you are recreating your RAC containers over and over again without deleting the virtual adapters so the `ip link delete` commands were added to delete any previously existing virtual adapters before creating the new ones needed by the RAC node container. The `ip link delete` commands will error out if these virtual adapters don't yet exist. These errors can be ignored. The `Warning: arping not found` errors can also be ignored. Pipework is using the existing networks instead of creating new ones.
-```
-sudo ip link delete rac1-pub
-sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac1-pub rac1 0.0.0.0/24
+Add the two custom networks to the RAC node container. I initially tried to use the `docker network connect` commands that were used for the DHCPD container but the name of the network adapter must be consistent in all the RAC node container and `docker network connect` does not allow you to specify an adapter name. I used to use a script called pipework but the results were inconsistent so I found the network namespace commands it was using and put them into individual scripts.
 
-sudo ip link delete rac1-priv
-sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac1-priv rac1 0.0.0.0/24
+Unlike the native docker network functions, the virtual adapters are not deleted automatically when the container is removed. There can be consequences if you are recreating your RAC containers over and over again without deleting the virtual adapters so the `ip link delete` commands were added to the scripts to delete any previously existing virtual adapters before creating the new ones needed by the RAC node container.
+```
+sudo ./networks-rac1-eth-pub.sh
+
+sudo ./networks-rac1-eth-priv.sh
 ```
 
 Start dhclient for each of the newly added networks. The IPs will come from the dhcpd container which will update the bind container.
@@ -345,11 +334,8 @@ giinstalled \
 
 Create the two networks and start dhclient on them as was done earlier. This step does not need to be done if you are continuing to use the same container.
 ```
-sudo ip link delete rac1-pub
-sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac1-pub rac1 0.0.0.0/24
-
-sudo ip link delete rac1-priv
-sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac1-priv rac1 0.0.0.0/24
+sudo ./networks-rac1-eth-pub.sh
+sudo ./networks-rac1-eth-priv.sh
 
 docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
@@ -373,11 +359,8 @@ giinstalled \
 
 Create the two networks and start dhclient on them.
 ```
-sudo ip link delete rac2-pub
-sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=pub) -i eth1 -l rac2-pub rac2 0.0.0.0/24
-
-sudo ip link delete rac2-priv
-sudo /srv/docker/pipework/pipework br-$(docker network ls -q -f NAME=priv) -i eth2 -l rac2-priv rac2 0.0.0.0/24
+sudo ./networks-rac2-eth-pub.sh
+sudo ./networks-rac2-eth-priv.sh
 
 docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac2 dhclient -H rac2-priv -pf /var/run/dhclient-eth2.pid eth2
