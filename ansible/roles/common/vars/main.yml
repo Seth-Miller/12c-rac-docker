@@ -23,6 +23,7 @@ asm_disk_groups:
 operating_system:
   rac_node_directory: /srv/docker/rac_nodes/custom_services
   pipework_directory: /srv/docker/scripts
+  scripts_directory: /srv/docker/scripts
   pipework_file: pipework
 
   grid_infrastructure:
@@ -93,6 +94,9 @@ oracle_binaries:
     version: 12.1.0.2
     oracle_base: /u01/app/oracle
     oracle_home: /u01/app/oracle/product/12.1.0/dbhome_1
+    database_passwords:
+      sys: oracle_4U
+      system: oracle_4U
   
 
 installation_files:
@@ -342,8 +346,14 @@ databases:
       - -silent
       - -templateName General_Purpose.dbc
       - -gdbName orcl
-      - -sysPassword oracle_4U
-      - -systemPassword oracle_4U
+      - "-sysPassword {{ oracle_binaries |
+           selectattr('type', 'equalto', 'database') |
+           selectattr('version', 'equalto', '12.1.0.2') |
+           map(attribute='database_passwords.sys') | first }}"
+      - "-systemPassword {{ oracle_binaries |
+           selectattr('type', 'equalto', 'database') |
+           selectattr('version', 'equalto', '12.1.0.2') |
+           map(attribute='database_passwords.system') | first }}"
       - -storageType ASM
       - -diskGroupName DATA
       - -recoveryGroupName DATA
@@ -351,7 +361,7 @@ databases:
       - -nationalCharacterSet UTF8
       - -totalMemory 1024
       - -emConfiguration none
-      - -nodelist rac1,rac2
+      - -nodelist rac1
       - -createAsContainerDatabase True
 
 docker:
@@ -370,7 +380,7 @@ docker:
   containers: 
     - name: bind
       hostname: bind
-      type:
+      type: dns
       image: sethmiller/bind
       ports:
         - "53:53/tcp"
@@ -386,7 +396,7 @@ docker:
 
     - name: dhcpd
       hostname: dhcpd
-      type:
+      type: dhcp
       image: networkboot/dhcpd
       config_directory: /srv/docker/dhcpd
       config_file: dhcpd.conf
@@ -426,14 +436,14 @@ docker:
           dhclient_pid: /var/run/dhclient-eth1.pid
           ipv4_address: 0.0.0.0
           cidr: 24
-          internal_network_name: eth1
+          internal_network_name: eth-pub
           external_network_name: rac1-pub
         - name: priv
           dhcp_hostname: rac1-priv
           dhclient_pid: /var/run/dhclient-eth2.pid
           ipv4_address: 0.0.0.0
           cidr: 24
-          internal_network_name: eth2
+          internal_network_name: eth-priv
           external_network_name: rac1-priv
       dns: 10.10.10.10
       shm_size: 2048m
@@ -441,7 +451,7 @@ docker:
 
     - name: rac2
       hostname: rac2
-      type: skip
+      type: rac_node
       designation: additional
       image: giinstalled
       volumes:
