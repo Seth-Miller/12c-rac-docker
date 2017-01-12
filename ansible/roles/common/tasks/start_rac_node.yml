@@ -31,6 +31,20 @@
       tags:
         - add_dhclient_services
 
+    - name: Create network management scripts for rac node container
+      template:
+        src: ../../common/templates/rac-node-networks.j2
+        dest: "{{ operating_system.scripts_directory }}/networks-{{ item.0.name }}-{{ item.1.internal_network_name }}.sh"
+        owner: root
+        group: root
+        mode: 0744
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
+      tags:
+        - add_network_scripts
+
     - name: Create rac node container
       docker_container:
         name: "{{ item.name }}"
@@ -78,42 +92,12 @@
       tags:
         - reload_udev
 
-    - block:
-        - name: Pull Docker network facts
-          docker_network:
-            name: "{{ item.name }}"
-          with_items:
-            - "{{ docker.networks }}"
-          register: docker_net_facts
-
-        - name: Drop existing rac node networks from docker host
-          command: "/usr/bin/ip link delete {{ item.1.external_network_name }}"
-          become: True
-          register: command_result
-          changed_when: (command_result.rc == 0 ) and ('Cannot find device' not in command_result.stderr)
-          failed_when: (command_result.rc != 0) and ('Cannot find device' not in command_result.stderr)
-          with_subelements:
-            - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-            - networks
-
-        - name: Add networks to rac node
-          command: >
-            {{ operating_system.pipework_directory }}/{{ operating_system.pipework_file }}
-            br-{{ docker_net_facts.results |
-              selectattr('ansible_facts.Ansible_docker_network.Name', 'equalto', item.1.name) |
-              map(attribute='ansible_facts.Ansible_docker_network.Id') | first |
-              truncate(12, True, '') }}
-            -i {{ item.1.internal_network_name }}
-            -l {{ item.1.external_network_name }}
-            {{ item.0.name }}
-            {{ item.1.ipv4_address }}/{{ item.1.cidr }}
-          become: True
-          register: command_result
-          changed_when: (command_result.rc == 0 ) and ('exists and is up' not in command_result.stdout)
-          failed_when: (command_result.rc != 0) and ('exists and is up' not in command_result.stdout)
-          with_subelements:
-            - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-            - networks
+    - name: Add networks to rac node
+      command: "{{ operating_system.scripts_directory }}/networks-{{ item.0.name }}-{{ item.1.internal_network_name }}.sh"
+      become: True
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
       tags:
         - add_rac_node_networks
 

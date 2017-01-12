@@ -1,0 +1,15 @@
+#!/bin/bash
+
+
+NSPID=$(docker inspect --format={% raw %}'{{ .State.Pid }}'{% endraw %} {{ item.0.name }})
+BRIDGE=$(docker network ls -q -f NAME={{ item.1.name }})
+
+rm -rf "/var/run/netns/${NSPID?}"
+ln -s "/proc/${NSPID?}/ns/net" "/var/run/netns/${NSPID?}"
+ip link del dev {{ item.1.external_network_name }} 2>/dev/null
+ip link add name {{ item.1.external_network_name }} mtu 1500 type veth peer name {{ item.1.internal_network_name }} mtu 1500
+ip link set {{ item.1.external_network_name }} master br-${BRIDGE?}
+ip link set {{ item.1.external_network_name }} up
+ip link set {{ item.1.internal_network_name }} netns ${NSPID?}
+ip netns exec ${NSPID?} ip link set {{ item.1.internal_network_name }} up
+rm -rf "/var/run/netns/${NSPID?}"
