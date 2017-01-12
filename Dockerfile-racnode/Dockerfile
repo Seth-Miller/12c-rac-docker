@@ -65,12 +65,14 @@ RUN ["groupadd", "--gid", "54326", "kmdba"]
 
 
 # Add grid infrastructure owner
-RUN ["useradd", "--create-home", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,asmadmin,asmoper", "grid"]
+RUN useradd --create-home --uid 54421 --gid oinstall --groups dba,asmdba,asmadmin,asmoper grid || \
+    (RES=$? && ( [ $RES -eq 9 ] && exit 0 || exit $RES))
 RUN ["usermod", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,asmadmin,asmoper", "grid"]
 
 
 # Add database owner
-RUN ["useradd", "--create-home", "--uid", "54321", "--gid", "oinstall", "--groups", "dba,asmdba,oper,backupdba,dgdba,kmdba", "oracle"]
+RUN useradd --create-home --uid 54321 --gid oinstall --groups dba,asmdba,oper,backupdba,dgdba,kmdba oracle || \
+    (RES=$? && ( [ $RES -eq 9 ] && exit 0 || exit $RES))
 RUN ["usermod", "--uid", "54321", "--gid", "oinstall", "--groups", "dba,asmdba,oper,backupdba,dgdba,kmdba", "oracle"]
 
 
