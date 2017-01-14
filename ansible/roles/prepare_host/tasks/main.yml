@@ -1,19 +1,21 @@
+# Prepare docker host and create supporting containers (bind, dhcpd, nfs)
 
     - block:
-        - name: Create ASM file devices
+        - name: Create ASM file devices, skips any block devices
           file:
             state: touch
-            path: "{{ item[1].path }}"
+            path: "{{ item.1.path }}"
           become: True
           with_subelements:
             - "{{ asm_disk_groups }}"
             - disks
-          when: item[1].type == "file"
+          when: item.1.type == "file"
           register: asm_disk_files
           tags:
             - create_asm_files
+
         
-        - name: Inflate ASM file devices
+        - name: Inflate ASM file devices, only if they have not already been inflated
           command: "dd if=/dev/zero of={{ item.dest }} bs=1024k count=2000"
           become: True
           with_items:
@@ -25,10 +27,11 @@
         - asm_files
         - asm
 
-    - name: Check ASM file devices
+
+    - name: Set permissions and ownership on ASM file devices
       file:
         state: file
-        path: "{{ item[1].path }}"
+        path: "{{ item.1.path }}"
         owner: "{{ operating_system.grid_infrastructure.users | selectattr('title', 'equalto', 'owner') | map(attribute='uid') | first }}"
         group: "{{ operating_system.grid_infrastructure.groups | selectattr('title', 'equalto', 'osasm') | map(attribute='gid') | first }}"
         mode: 0660
@@ -36,23 +39,25 @@
       with_subelements:
         - "{{ asm_disk_groups }}"
         - disks
-      when: item[1].type == "file"
+      when: item.1.type == "file"
       tags:
         - check_asm_files
         - asm_files
         - asm
 
-    - name: Check ASM block devices
+
+    - name: Check that ASM block devices exist, skips any file devices
       stat:
-        path: "{{ item[1].rawpath }}"
+        path: "{{ item.1.rawpath }}"
       with_subelements:
         - "{{ asm_disk_groups }}"
         - disks
-      when: item[1].type == "block"
+      when: item.1.type == "block"
       tags:
         - check_asm_blocks
         - asm_blocks
         - asm
+
 
     - name: Create Docker networks
       docker_network:
@@ -65,7 +70,7 @@
         - "{{ docker.networks }}"
       tags:
         - create_docker_networks
-        - docker
+
 
     - name: Create BIND container
       docker_container:
@@ -88,10 +93,9 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'bind') | list }}"
       tags:
         - create_bind_container
-        - bind
-        - docker
 
-    - name: Create DHCPD configuration directory
+
+    - name: Create DHCPD container configuration directory
       file:
         state: directory
         path: "{{ item.config_directory }}"
@@ -101,11 +105,9 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
         - create_dhcpd_config_dir
-        - dhcpd
-        - dhcpd_config
-        - docker
 
-    - name: Create rac_nodes custom directories
+
+    - name: Create rac node containers custom directories
       file:
         state: directory
         path: "{{ operating_system.rac_node_directory }}"
@@ -113,10 +115,9 @@
       become: True
       tags:
         - create_rac_nodes_custom_dirs
-        - rac1
-        - docker
 
-    - name: Copy DHCPD configuration file
+
+    - name: Copy DHCPD container configuration file
       copy:
         src: "{{ item.config_file }}" 
         dest: "{{ item.config_directory }}/"
@@ -124,9 +125,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
         - copy_dhcpd_config_file
-        - dhcpd
-        - dhcpd_config
-        - docker
+
 
     - name: Create DHCPD container
       docker_container:
@@ -146,10 +145,9 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
         - create_dhcpd_container
-        - dhcpd
-        - docker
 
-    - name: Create NFS configuration directory
+
+    - name: Create NFS container configuration directory
       file:
         state: directory
         path: "{{ item.config_directory }}"
@@ -159,11 +157,9 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
       tags:
         - create_nfs_config_dir
-        - nfs
-        - nfs_config
-        - docker
 
-    - name: Copy NFS configuration file
+
+    - name: Copy NFS container configuration file
       copy:
         src: "{{ item.config_file }}" 
         dest: "{{ item.config_directory }}/"
@@ -171,9 +167,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
       tags:
         - copy_nfs_config_file
-        - nfs
-        - nfs_config
-        - docker
+
 
     - name: Create NFS container
       docker_container:
@@ -192,8 +186,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
       tags:
         - create_nfs_container
-        - nfs
-        - docker
+ 
 
     - name: Create installation file directories
       file:
@@ -207,7 +200,8 @@
         - create_installation_file_dirs
         - installation_files
 
-    - name: Download installation files
+
+    - name: Download installation files only if they are not already present
       get_url:
         url: "{{ item.1.name }}"
         dest: "/oracledata/stage/{{ item.1.name | basename }}"
@@ -219,7 +213,8 @@
         - download_installation_files
         - installation_files
 
-    - name: Unzip installation files
+
+    - name: Unzip installation files only if the 'creates' file does not already exist
       unarchive:
         src: "/oracledata/stage/{{ item.1.name | basename }}"
         dest: "/oracledata/stage/{{ item.0.version }}/"

@@ -1,4 +1,8 @@
+# Main variables file
+# Installation file locations are sourced from the files.yml in this same directory
 
+
+# ASM disk groups can be composed of block devices, file devices or both
 asm_disk_groups:
   - group: DATA
     disks:
@@ -20,6 +24,8 @@ asm_disk_groups:
       - path: /oraclenfs/asm-clu-121-NDATA-disk3
         type: file
 
+
+# All OS users and groups should already exist
 operating_system:
   rac_node_directory: /srv/docker/rac_nodes/custom_services
   scripts_directory: /srv/docker/scripts
@@ -65,6 +71,7 @@ operating_system:
         title: oskmdba
         gid: 54326
 
+
 oracle_binaries:
   - type: all
     oracle_inventory: /u01/app/oraInventory
@@ -81,8 +88,8 @@ oracle_binaries:
     cluster_asm_dg_name: DATA
     cluster_asm_dg_redundancy: EXTERNAL
     asm_discovery_string: /dev/asmdisks/*
-    gns_vip: clu-121-gns.example.com
-    gns_sub_domain: clu-121.example.com
+    gns_vip: clu-121-gns.example.com  # Needs to already exist in DNS
+    gns_sub_domain: clu-121.example.com  # Needs to already exist in DNS
     install_management_database: False
     asm_passwords:
       sysasm: oracle_4U
@@ -97,6 +104,7 @@ oracle_binaries:
       system: oracle_4U
   
 
+# Find 'file_locations' variables in the files.yml in this same directory
 installation_files:
   - type: opatch
     version: 12.1.0.2
@@ -104,6 +112,8 @@ installation_files:
       - name: "{{ file_locations.file1 }}"
         creates: OPatch/opatch
 
+# Should include all patch subdirectories in bundle patch
+# opatch will automatically skip patches that don't apply to the home that is being patched
   - type: bundle
     version: 12.1.0.2
     patch_numbers:
@@ -114,6 +124,7 @@ installation_files:
       - 23615334/23520664
     files:
       - name: "{{ file_locations.file2 }}"
+# Unzip each file and pick one of the files or directories it creates
         creates: 23615334/23144544/23144544/files/rdbms/lib
 
   - type: oneoff
@@ -343,7 +354,7 @@ databases:
       - -createDatabase
       - -silent
       - -templateName General_Purpose.dbc
-      - -gdbName orcl
+      - -gdbName orclb
       - "-sysPassword {{ oracle_binaries |
            selectattr('type', 'equalto', 'database') |
            selectattr('version', 'equalto', '12.1.0.2') |
@@ -359,7 +370,7 @@ databases:
       - -nationalCharacterSet UTF8
       - -totalMemory 1024
       - -emConfiguration none
-      - -nodelist rac1
+      - -nodelist rac1,rac2
       - -createAsContainerDatabase True
 
 docker:

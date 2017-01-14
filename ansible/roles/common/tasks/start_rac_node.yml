@@ -1,3 +1,5 @@
+# Used to provision a rac node container
+# 'this_rac_node' variable must be set
 
     - name: Create rac_nodes custom directories
       file:
