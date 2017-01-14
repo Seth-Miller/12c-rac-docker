@@ -370,12 +370,12 @@ docker:
       name: pub
       subnet: 10.10.10.0
       cidr: 24
-      network_name: eth1
+      network_name: eth-pub
     - type: private
       name: priv
       subnet: 11.11.11.0
       cidr: 24
-      network_name: eth2
+      network_name: eth-priv
 
   containers: 
     - name: bind
@@ -433,14 +433,14 @@ docker:
       networks:
         - name: pub
           dhcp_hostname: rac1
-          dhclient_pid: /var/run/dhclient-eth1.pid
+          dhclient_pid: /var/run/dhclient-eth-pub.pid
           ipv4_address: 0.0.0.0
           cidr: 24
           internal_network_name: eth-pub
           external_network_name: rac1-pub
         - name: priv
           dhcp_hostname: rac1-priv
-          dhclient_pid: /var/run/dhclient-eth2.pid
+          dhclient_pid: /var/run/dhclient-eth-priv.pid
           ipv4_address: 0.0.0.0
           cidr: 24
           internal_network_name: eth-priv
@@ -461,17 +461,17 @@ docker:
       networks:
         - name: pub
           dhcp_hostname: rac2
-          dhclient_pid: /var/run/dhclient-eth1.pid
+          dhclient_pid: /var/run/dhclient-eth-pub.pid
           ipv4_address: 0.0.0.0
           cidr: 24
-          internal_network_name: eth1
+          internal_network_name: eth-pub
           external_network_name: rac2-pub
         - name: priv
           dhcp_hostname: rac2-priv
-          dhclient_pid: /var/run/dhclient-eth2.pid
+          dhclient_pid: /var/run/dhclient-eth-priv.pid
           ipv4_address: 0.0.0.0
           cidr: 24
-          internal_network_name: eth2
+          internal_network_name: eth-priv
           external_network_name: rac2-priv
       dns: 10.10.10.10
       shm_size: 2048m
