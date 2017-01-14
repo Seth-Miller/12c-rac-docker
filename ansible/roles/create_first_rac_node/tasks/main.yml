@@ -33,15 +33,11 @@
 
     - block:
         - name: Modify the root script to show output
-          command: "/usr/bin/docker exec {{ item.name }} sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
-          with_items:
-            - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
+          command: "/usr/bin/docker exec {{ first_rac_node }} sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
           
         - name: Run grid infrastructure root scripts
-          command: "/usr/bin/docker exec {{ item.name }} /u01/app/12.1.0/grid/root.sh"
+          command: "/usr/bin/docker exec {{ first_rac_node }} /u01/app/12.1.0/grid/root.sh"
           register: configure_grid_root_result
-          with_items:
-            - "{{ docker.containers | selectattr('type', 'equalto', 'rac_node') | list }}"
       tags:
         - configure_grid_root
         - docker
