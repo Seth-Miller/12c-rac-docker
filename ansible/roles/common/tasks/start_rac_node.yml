@@ -25,14 +25,13 @@
     - name: Create network management scripts for rac node container
       template:
         src: ../../common/templates/rac-node-networks.j2
-        dest: "{{ operating_system.scripts_directory }}/networks-{{ item.0.name }}-{{ item.1.internal_network_name }}.sh"
+        dest: "{{ operating_system.scripts_directory }}/networks-{{ item.name }}.sh"
         owner: root
         group: root
         mode: 0744
       become: True
-      with_subelements:
+      with_items:
         - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-        - networks
       tags:
         - add_network_scripts
 
@@ -84,55 +83,9 @@
         - reload_udev
 
     - name: Add networks to rac node
-      command: "{{ operating_system.scripts_directory }}/networks-{{ item.0.name }}-{{ item.1.internal_network_name }}.sh"
+      command: "{{ operating_system.scripts_directory }}/networks-{{ item.name }}.sh"
       become: True
-      with_subelements:
+      with_items:
         - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-        - networks
       tags:
         - add_rac_node_networks
-
-    - name: Enable dhclient for each network on rac node
-      command: >
-        /usr/bin/docker exec {{ item.0.name }}
-        /usr/bin/ln -s
-        /usr/lib/custom_services/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
-        /etc/systemd/system/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service
-      register: command_result
-      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
-      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-        - networks
-      tags:
-        - enable_rac_node_dhclient
-
-    - name: Stop dhclient for each network on rac node
-      command: "/usr/bin/docker exec {{ item.0.name }}
-                /usr/bin/systemctl stop dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
-      register: command_result
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-        - networks
-      tags:
-        - stop_rac_node_dhclient
-
-    - name: Reload the systemd daemon on rac node
-      command: "/usr/bin/docker exec {{ item.0.name }}
-                /usr/bin/systemctl daemon-reload"
-      register: command_result
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-        - networks
-      tags:
-        - reload_rac_node_systemctl_daemon
-
-    - name: Start dhclient for each network on rac node
-      command: "/usr/bin/docker exec {{ item.0.name }}
-                /usr/bin/systemctl start dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
-      register: command_result
-      with_subelements:
-        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-        - networks
-      tags:
-        - start_rac_node_dhclient
