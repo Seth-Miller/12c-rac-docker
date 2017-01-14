@@ -8,15 +8,6 @@
       tags:
         - create_rac_nodes_custom_dirs
 
-    - name: Copy pipework script
-      copy:
-        src: "../../common/files/{{ operating_system.pipework_file }}" 
-        dest: "{{ operating_system.pipework_directory }}/"
-        mode: 0744
-      become: True
-      tags:
-        - copy_pipework_file
-
     - name: Create dhclient service files for rac node container
       template:
         src: ../../common/templates/dhclient.j2
@@ -115,6 +106,26 @@
         - networks
       tags:
         - enable_rac_node_dhclient
+
+    - name: Stop dhclient for each network on rac node
+      command: "/usr/bin/docker exec {{ item.0.name }}
+                /usr/bin/systemctl stop dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
+      register: command_result
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
+      tags:
+        - stop_rac_node_dhclient
+
+    - name: Reload the systemd daemon on rac node
+      command: "/usr/bin/docker exec {{ item.0.name }}
+                /usr/bin/systemctl daemon-reload"
+      register: command_result
+      with_subelements:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+        - networks
+      tags:
+        - reload_rac_node_systemctl_daemon
 
     - name: Start dhclient for each network on rac node
       command: "/usr/bin/docker exec {{ item.0.name }}
