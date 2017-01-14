@@ -22,9 +22,7 @@ asm_disk_groups:
 
 operating_system:
   rac_node_directory: /srv/docker/rac_nodes/custom_services
-  pipework_directory: /srv/docker/scripts
   scripts_directory: /srv/docker/scripts
-  pipework_file: pipework
 
   grid_infrastructure:
     users:
@@ -483,10 +481,4 @@ first_rac_node: >-
      selectattr('designation', 'defined') |
      selectattr('type', 'equalto', 'rac_node') |
      selectattr('designation', 'equalto', 'first') |
-     map(attribute='name') | first }}
-additional_rac_node: >-
-     {{ docker.containers |
-     selectattr('designation', 'defined') |
-     selectattr('type', 'equalto', 'rac_node') |
-     selectattr('designation', 'equalto', 'additional') |
      map(attribute='name') | first }}
