@@ -6,4 +6,4 @@
        - roles/common/vars/files.yml
      roles:
        - common
-       - add_rac_nodes
+       - { role: add_rac_nodes, this_rac_node: rac2 }
