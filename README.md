@@ -214,9 +214,7 @@ Add the two custom networks to the RAC node container. I initially tried to use 
 
 Unlike the native docker network functions, the virtual adapters are not deleted automatically when the container is removed. There can be consequences if you are recreating your RAC containers over and over again without deleting the virtual adapters so the `ip link delete` commands were added to the scripts to delete any previously existing virtual adapters before creating the new ones needed by the RAC node container.
 ```
-sudo ./networks-rac1-eth-pub.sh
-
-sudo ./networks-rac1-eth-priv.sh
+sudo ./networks-rac1.sh
 ```
 
 Start dhclient for each of the newly added networks. The IPs will come from the dhcpd container which will update the bind container.
@@ -334,8 +332,7 @@ giinstalled \
 
 Create the two networks and start dhclient on them as was done earlier. This step does not need to be done if you are continuing to use the same container.
 ```
-sudo ./networks-rac1-eth-pub.sh
-sudo ./networks-rac1-eth-priv.sh
+sudo ./networks-rac1.sh
 
 docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
@@ -359,8 +356,7 @@ giinstalled \
 
 Create the two networks and start dhclient on them.
 ```
-sudo ./networks-rac2-eth-pub.sh
-sudo ./networks-rac2-eth-priv.sh
+sudo ./networks-rac2.sh
 
 docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth1.pid eth1
 docker exec rac2 dhclient -H rac2-priv -pf /var/run/dhclient-eth2.pid eth2
