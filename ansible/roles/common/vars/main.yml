@@ -421,13 +421,16 @@ docker:
 
     - name: nfs
       hostname: nfs
-      type:
+      type: nfs
       image: sethmiller/nfs
       config_directory: /srv/docker/nfs
       config_file: ganesha.conf
       volumes:
         - "/srv/docker/nfs:/etc/ganesha"
         - "/oraclenfs:/oraclenfs"
+      networks:
+        - name: "pub"
+          ipv4_address: "10.10.10.12"
       dns: 10.10.10.10
 
     - name: rac1

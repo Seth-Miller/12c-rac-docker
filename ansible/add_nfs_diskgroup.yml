@@ -1,0 +1,9 @@
+
+
+   - hosts: all
+     any_errors_fatal: True
+     vars_files:
+       - roles/common/vars/files.yml
+     roles:
+       - common
+       - { role: add_nfs_diskgroup, this_rac_node: rac1 }

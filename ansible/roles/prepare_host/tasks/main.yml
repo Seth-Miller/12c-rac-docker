@@ -180,6 +180,8 @@
         privileged: True
         volumes:
           "{{ item.volumes }}"
+        networks:
+          "{{ item.networks }}"
         dns_servers:
           "{{ item.dns }}"
       with_items:

@@ -1,0 +1,15 @@
+[Unit]
+Description=Mount oraclenfs NFS volume to /oraclenfs
+
+[Mount]
+{# Lookup IP address of NFS server #}
+What={{
+  docker.containers |
+  selectattr('type', 'equalto', 'nfs') |
+  map(attribute='networks') | first |
+  selectattr('name', 'equalto', 'pub') | list |
+  map(attribute='ipv4_address') | first
+}}:/oraclenfs
+Where=/oraclenfs
+Type=nfs
+Options=rw,bg,hard,nointr,rsize=32768,wsize=32768,tcp,actimeo=0,vers=3,timeo=600

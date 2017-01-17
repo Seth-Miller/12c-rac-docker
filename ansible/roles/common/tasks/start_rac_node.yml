@@ -1,5 +1,6 @@
 # Used to provision a rac node container
 # 'this_rac_node' variable must be set
+# All jinja2 templates are in the common role templates folder
 
     - name: Create rac_nodes custom directories
       file:
@@ -36,6 +37,17 @@
         - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
       tags:
         - add_network_scripts
+
+    - name: Create nfs mount scripts for rac node container
+      template:
+        src: ../../common/templates/oracle-nfs-mount.j2
+        dest: "{{ operating_system.rac_node_directory }}/oraclenfs.mount"
+        owner: root
+        group: root
+        mode: 0744
+      become: True
+      tags:
+        - add_oracle_nfs_scripts
 
     - name: Create rac node container
       docker_container:
