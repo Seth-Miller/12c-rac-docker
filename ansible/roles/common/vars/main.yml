@@ -354,7 +354,7 @@ databases:
       - -createDatabase
       - -silent
       - -templateName General_Purpose.dbc
-      - -gdbName orclb
+      - -gdbName orcl
       - "-sysPassword {{ oracle_binaries |
            selectattr('type', 'equalto', 'database') |
            selectattr('version', 'equalto', '12.1.0.2') |
