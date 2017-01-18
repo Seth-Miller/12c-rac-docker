@@ -1,40 +1,26 @@
 
-    - name: Query the list of running rac node containers
-      command: >
-               /usr/bin/docker ps --filter name=rac --format={% raw %}'{{ .Names }}'{% endraw %}
-      register: nodes
+    - name: Create the disk group
+      command: >-
+               /usr/bin/docker exec {{ first_rac_node }}
+               /usr/bin/su -
+               {{
+                 operating_system.grid_infrastructure.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') |
+                 first
+               }} -c "ORACLE_SID=+ASM1
+               {{
+                 oracle_binaries |
+                 selectattr('type', 'equalto', 'grid') |
+                 selectattr('version', 'equalto', '12.1.0.2') |
+                 (attribute='oracle_home') | first
+               }}/bin/asmcmd mkdg '
+               <dg name=\"{{ this_disk_group }}\" redundancy=\"external\">
+               {% for disk in asm_disk_groups |
+                  selectattr('group', 'equalto', this_disk_group) |
+                  list | map(attribute='disks') | first %}
+               <dsk string=\"{{ disk.path }}\"/>
+               {% endfor %}
+               </dg>'"
       tags:
-        - query_rac_node_containers
-
-    - name: Enable nfs mount
-      command: >
-        /usr/bin/docker exec {{ item }}
-        /usr/bin/ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
-      become: True
-      register: command_result
-      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
-      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
-      with_items:
-        - "{{ nodes.stdout_lines }}"
-      tags:
-        - enable_nfs_mount
-
-    - name: Reload systemd
-      command: >
-        /usr/bin/docker exec {{ item }}
-        /usr/bin/systemctl daemon-reload
-      become: True
-      with_items:
-        - "{{ nodes.stdout_lines }}"
-      tags:
-        - reload_systemd_for_nfs
-
-    - name: Start nfs mount
-      command: >
-        /usr/bin/docker exec {{ item }}
-        /usr/bin/systemctl start oraclenfs.mount
-      become: True
-      with_items:
-        - "{{ nodes.stdout_lines }}"
-      tags:
-        - start_nfs_mount
+        - create_disk_group

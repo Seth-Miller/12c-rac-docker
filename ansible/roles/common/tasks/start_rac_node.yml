@@ -103,3 +103,31 @@
         - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
       tags:
         - add_rac_node_networks
+
+    - name: Enable nfs mount
+      command: >
+        /usr/bin/docker exec {{ this_rac_node }}
+        /usr/bin/ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
+      become: True
+      register: command_result
+      changed_when: (command_result.rc == 0 ) and ('File exists' not in command_result.stderr)
+      failed_when: (command_result.rc != 0) and ('File exists' not in command_result.stderr)
+      tags:
+        - enable_nfs_mount
+
+    - name: Reload systemd
+      command: >
+        /usr/bin/docker exec {{ this_rac_node }}
+        /usr/bin/systemctl daemon-reload
+      become: True
+      tags:
+        - reload_systemd_for_nfs
+
+    - name: Start nfs mount
+      command: >
+        /usr/bin/docker exec {{ this_rac_node }}
+        /usr/bin/systemctl start oraclenfs.mount
+      become: True
+      tags:
+        - start_nfs_mount
+

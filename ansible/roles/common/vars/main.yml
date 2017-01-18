@@ -87,7 +87,7 @@ oracle_binaries:
     cluster_storage: LOCAL_ASM_STORAGE
     cluster_asm_dg_name: DATA
     cluster_asm_dg_redundancy: EXTERNAL
-    asm_discovery_string: /dev/asmdisks/*
+    asm_discovery_string: /dev/asmdisks/*,/oraclenfs/asm*
     gns_vip: clu-121-gns.example.com  # Needs to already exist in DNS
     gns_sub_domain: clu-121.example.com  # Needs to already exist in DNS
     install_management_database: False

@@ -6,4 +6,4 @@
        - roles/common/vars/files.yml
      roles:
        - common
-       - { role: add_nfs_diskgroup, this_rac_node: rac1 }
+       - { role: add_nfs_diskgroup, this_disk_group: NDATA }
