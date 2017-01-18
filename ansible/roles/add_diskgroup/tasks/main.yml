@@ -13,7 +13,7 @@
                  oracle_binaries |
                  selectattr('type', 'equalto', 'grid') |
                  selectattr('version', 'equalto', '12.1.0.2') |
-                 (attribute='oracle_home') | first
+                 map(attribute='oracle_home') | first
                }}/bin/asmcmd mkdg '
                <dg name=\"{{ this_disk_group }}\" redundancy=\"external\">
                {% for disk in asm_disk_groups |
