@@ -1,5 +1,10 @@
 # Prepare docker host and create supporting containers (bind, dhcpd, nfs)
 
+
+##########################################################################################
+#############  Prepare ASM block and file devices
+##########################################################################################
+
     - block:
         - name: Create ASM file devices, skips any block devices
           file:
@@ -59,6 +64,10 @@
         - asm
 
 
+##########################################################################################
+#############  Create docker networks
+##########################################################################################
+
     - name: Create Docker networks
       docker_network:
         name: "{{ item.name }}"
@@ -71,6 +80,99 @@
       tags:
         - create_docker_networks
 
+
+##########################################################################################
+#############  Create host configuration directories
+##########################################################################################
+
+    - name: Create DHCPD container configuration directory
+      file:
+        state: directory
+        path: "{{ item.config_directory }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - create_dhcpd_config_dir
+        - create_directory
+
+
+    - name: Create rac node containers custom directories
+      file:
+        state: directory
+        path: "{{ operating_system.rac_node_directory }}"
+        mode: 0777
+      become: True
+      tags:
+        - create_rac_nodes_custom_dirs
+        - create_directory
+
+
+    - name: Create scripts directories
+      file:
+        state: directory
+        path: "{{ operating_system.scripts_directory }}"
+        mode: 0777
+      become: True
+      tags:
+        - create_scripts_dir
+        - create_directory
+
+
+    - name: Create NFS container configuration directory
+      file:
+        state: directory
+        path: "{{ item.config_directory }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
+      tags:
+        - create_nfs_config_dir
+        - create_directory
+
+
+    - name: Create installation file directories
+      file:
+        state: directory
+        path: "/oracledata/stage/{{ item.version }}"
+        mode: 0777
+      become: True
+      with_items:
+        - "{{ installation_files }}"
+      tags:
+        - create_installation_file_dirs
+        - installation_files
+
+
+##########################################################################################
+#############  Copy container configuration files
+##########################################################################################
+
+    - name: Copy DHCPD container configuration file
+      copy:
+        src: "{{ item.config_file }}" 
+        dest: "{{ item.config_directory }}/"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
+      tags:
+        - copy_dhcpd_config_file
+
+
+    - name: Copy NFS container configuration file
+      copy:
+        src: "{{ item.config_file }}" 
+        dest: "{{ item.config_directory }}/"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
+      tags:
+        - copy_nfs_config_file
+
+
+##########################################################################################
+#############  Create supporting containers
+##########################################################################################
 
     - name: Create BIND container
       docker_container:
@@ -95,38 +197,6 @@
         - create_bind_container
 
 
-    - name: Create DHCPD container configuration directory
-      file:
-        state: directory
-        path: "{{ item.config_directory }}"
-        mode: 0777
-      become: True
-      with_items:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
-      tags:
-        - create_dhcpd_config_dir
-
-
-    - name: Create rac node containers custom directories
-      file:
-        state: directory
-        path: "{{ operating_system.rac_node_directory }}"
-        mode: 0777
-      become: True
-      tags:
-        - create_rac_nodes_custom_dirs
-
-
-    - name: Copy DHCPD container configuration file
-      copy:
-        src: "{{ item.config_file }}" 
-        dest: "{{ item.config_directory }}/"
-      with_items:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
-      tags:
-        - copy_dhcpd_config_file
-
-
     - name: Create DHCPD container
       docker_container:
         name: dhcpd
@@ -145,28 +215,6 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
         - create_dhcpd_container
-
-
-    - name: Create NFS container configuration directory
-      file:
-        state: directory
-        path: "{{ item.config_directory }}"
-        mode: 0777
-      become: True
-      with_items:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
-      tags:
-        - create_nfs_config_dir
-
-
-    - name: Copy NFS container configuration file
-      copy:
-        src: "{{ item.config_file }}" 
-        dest: "{{ item.config_directory }}/"
-      with_items:
-        - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
-      tags:
-        - copy_nfs_config_file
 
 
     - name: Create NFS container
@@ -190,18 +238,9 @@
         - create_nfs_container
  
 
-    - name: Create installation file directories
-      file:
-        state: directory
-        path: "/oracledata/stage/{{ item.version }}"
-        mode: 0777
-      become: True
-      with_items:
-        - "{{ installation_files }}"
-      tags:
-        - create_installation_file_dirs
-        - installation_files
-
+##########################################################################################
+#############  Prepare Oracle installation files
+##########################################################################################
 
     - name: Download installation files only if they are not already present
       get_url:
