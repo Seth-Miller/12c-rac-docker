@@ -1,8 +1,15 @@
 # Used to provision a rac node container
-# 'this_rac_node' variable must be set
+# 'this_rac_node' and 'this_image' variables must be set
 # All jinja2 templates are in the common role templates folder
 
+
+##########################################################################################
+#############  Create directories and scripts for the rac node container
+##########################################################################################
+
     - name: Create rac_nodes custom directories
+      # this directory holds all of the scripts shared by the rac node containers
+      # /srv/docker/rac_nodes/custom_services
       file:
         state: directory
         path: "{{ operating_system.rac_node_directory }}"
@@ -11,7 +18,12 @@
       tags:
         - create_rac_nodes_custom_dirs
 
+
     - name: Create dhclient service files for rac node container
+      # used by systemd in each of the rac node containers to start dhclient processes for the
+      # public and private networks
+      # /srv/docker/rac_nodes/custom_services/dhclient-rac1-eth-pub.service
+      # /srv/docker/rac_nodes/custom_services/dhclient-rac1-eth-priv.service
       template:
         src: ../../common/templates/dhclient.j2
         dest: "{{ operating_system.rac_node_directory }}/dhclient-{{ item.0.name }}-{{ item.1.internal_network_name }}.service"
@@ -25,7 +37,27 @@
       tags:
         - add_dhclient_services
 
+
+    - name: Create nfs mount files for rac node container
+      # used by systemd in each of the rac node containers to mount the NFS shares from the
+      # ganesha NFS container
+      # /srv/docker/rac_nodes/custom_services/oraclenfs.mount
+      template:
+        src: ../../common/templates/oracle-nfs-mount.j2
+        dest: "{{ operating_system.rac_node_directory }}/oraclenfs.mount"
+        owner: root
+        group: root
+        mode: 0744
+      become: True
+      tags:
+        - add_oracle_nfs_scripts
+
+
     - name: Create network management scripts for rac node container
+      # scripts created on the docker host to manage the public and private networks in the
+      # rac node containers, scripts can be executed manually to recreate the networks on
+      # each rac node container
+      # /srv/docker/scripts/networks-rac1.sh
       template:
         src: ../../common/templates/rac-node-networks.j2
         dest: "{{ operating_system.scripts_directory }}/networks-{{ item.name }}.sh"
@@ -38,34 +70,11 @@
       tags:
         - add_network_scripts
 
-    - name: Create nfs mount scripts for rac node container
-      template:
-        src: ../../common/templates/oracle-nfs-mount.j2
-        dest: "{{ operating_system.rac_node_directory }}/oraclenfs.mount"
-        owner: root
-        group: root
-        mode: 0744
-      become: True
-      tags:
-        - add_oracle_nfs_scripts
-
-    - name: Create rac node container
-      docker_container:
-        name: "{{ item.name }}"
-        hostname:  "{{ item.hostname }}"
-        image: "{{ this_image }}"
-        state: started
-        privileged: True
-        volumes:
-          "{{ item.volumes }}"
-        command: "{{ item.command }}"
-        shm_size: "{{ item.shm_size }}"
-      with_items:
-        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
-      tags:
-        - create_rac_node_container
 
     - name: Create asm disk udev configuration file
+      # used by udev in each of the rac node containers create symlinks as well as
+      #   change the ownership and permissions of the ASM block devices
+      # /srv/docker/rac_nodes/custom_services/99-asm-disk.rules
       template:
         src: ../../common/templates/99-asm-disks.rules.j2
         dest: "{{ operating_system.rac_node_directory }}/99-asm-disk.rules"
@@ -76,7 +85,42 @@
       tags:
         - create_asm_disk_udev_file
 
+
+##########################################################################################
+#############  Create the rac node docker container
+##########################################################################################
+
+    - name: Create rac node container
+      # docker run --detach --privileged --name rac1 --hostname rac1 \
+      #   --volume /srv/docker/rac_nodes/custom_services:/usr/lib/custom_services \
+      #   --volume /oracledata/stage:/stage --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+      #   --shm-size 2048m --dns 10.10.10.10 sethmiller/giready \
+      #   /usr/lib/systemd/systemd --system --unit=multi-user.target
+      docker_container:
+        name: "{{ item.name }}"
+        hostname:  "{{ item.hostname }}"
+        image: "{{ this_image }}"
+        state: started
+        privileged: True
+        volumes:
+          "{{ item.volumes }}"
+        command: "{{ item.command }}"
+        shm_size: "{{ item.shm_size }}"
+        dns_servers: "{{ item.dns }}"
+      with_items:
+        - "{{ docker.containers | selectattr('name', 'equalto', this_rac_node) | list }}"
+      tags:
+        - create_rac_node_container
+
+
+##########################################################################################
+#############  Start rac node container services and networks
+##########################################################################################
+
     - name: Enable asm disk udev configuration
+      # link the udev configuration files to the udev rules.d directory
+      # /usr/bin/docker exec rac1 /usr/bin/ls -s /usr/lib/custom_services/99-asm-disk.rules \
+      #   /etc/udev/rules.d/
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/ln -s /usr/lib/custom_services/99-asm-disk.rules /etc/udev/rules.d/
@@ -87,7 +131,11 @@
       tags:
         - enable_udev
 
+
     - name: Reload udev rules
+      # reload udev rules to make ASM disk changes take effect
+      # /usr/bin/docker exec rac1 /usr/sbin/udevadm control --reload-rules
+      # /usr/bin/docker exec rac1 /usr/sbin/udevadm trigger
       command: "/usr/bin/docker exec {{ this_rac_node }} {{ item }}"
       become: True
       with_items:
@@ -96,7 +144,10 @@
       tags:
         - reload_udev
 
+
     - name: Add networks to rac node
+      # execute the network scripts created by the add_network_scripts task above
+      # /srv/docker/scripts/networks-rac1.sh
       command: "{{ operating_system.scripts_directory }}/networks-{{ item.name }}.sh"
       become: True
       with_items:
@@ -104,7 +155,10 @@
       tags:
         - add_rac_node_networks
 
+
     - name: Enable nfs mount
+      # link the nfs mount systemd configuration files to the systemd directory
+      # /usr/bin/docker exec rac1 /usr/bin/ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
@@ -115,7 +169,10 @@
       tags:
         - enable_nfs_mount
 
+
     - name: Reload systemd
+      # reload systemd to enable the nfs mount service
+      # /usr/bin/docker exec rac1 /usr/bin/systemctl daemon-reload
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/systemctl daemon-reload
@@ -123,11 +180,13 @@
       tags:
         - reload_systemd_for_nfs
 
+
     - name: Start nfs mount
+      # start the systemd nfs mount service
+      # /usr/bin/docker exec rac1 /usr/bin/systemctl start oraclenfs.mount
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/systemctl start oraclenfs.mount
       become: True
       tags:
         - start_nfs_mount
-

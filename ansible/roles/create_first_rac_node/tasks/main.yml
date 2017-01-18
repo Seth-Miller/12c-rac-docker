@@ -1,25 +1,48 @@
+# Used to provision the first rac node container
+# 'this_rac_node' and 'this_image' variables must be set
+# All jinja2 templates are in the common role templates folder
 
-    - name: Create rac1 container post binary install
+
+##########################################################################################
+#############  Create the first rac node container
+##########################################################################################
+
+    - name: Create rac1 container
+      # call the start_rac_node.yml common task, the 'this_image' variable is set to the
+      #   rac node image which was created by the 'create_oracle_image' role
+      # ../../common/tasks/start_rac_node.yml this_rac_node=rac1 this_image=giinstalled
       include: ../../common/tasks/start_rac_node.yml this_rac_node="{{ first_rac_node }}" this_image=giinstalled
       tags:
-        - start_rac1_container_post_install
+        - create_rac1_container
+
+
+##########################################################################################
+#############  Configure the grid infrastructure binaries
+##########################################################################################
 
     - block:
         - name: Configure grid infrastructure binaries
+          # the grid infrastructure binaries have already been installed as part of the image,
+          #   this step configures them
+          # /usr/bin/docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/crs/config/config.sh -waitforcompletion .."
           command: >
-                 /usr/bin/docker exec {{ first_rac_node }} su -
-                 {{
-                   operating_system.grid_infrastructure.users |
-                   selectattr('title', 'equalto', 'owner') |
-                   map(attribute='name') |
-                   first
-                 }} -c "/u01/app/12.1.0/grid/crs/config/config.sh
-                 {{
-                   installation_files |
-                   selectattr('type', 'equalto', 'grid') |
-                   map(attribute='configuration_parameters') |
-                   first | join(' ')
-                 }}"
+                   /usr/bin/docker exec {{ first_rac_node }} su -
+                   {{
+                     operating_system.grid_infrastructure.users |
+                     selectattr('title', 'equalto', 'owner') |
+                     map(attribute='name') | first
+                   }} -c "{{
+                       oracle_binaries |
+                       selectattr('type', 'equalto', 'grid') |
+                       selectattr('version', 'equalto', '12.1.0.2') |
+                       map(attribute='oracle_home') | first
+                   }}/crs/config/config.sh
+                   {{
+                     installation_files |
+                     selectattr('type', 'equalto', 'grid') |
+                     map(attribute='configuration_parameters') |
+                     first | join(' ')
+                   }}"
           register: configure_grid_binaries_result
           changed_when: (configure_grid_binaries_result.rc == 0 ) or (configure_grid_binaries_result.rc == 6 )
           failed_when: (configure_grid_binaries_result.rc != 0) and (configure_grid_binaries_result.rc != 6 )
@@ -29,21 +52,44 @@
             var: configure_grid_binaries_result.stdout_lines
       tags:
         - configure_grid
-        - docker
+
 
     - block:
         - name: Modify the root script to show output
-          command: "/usr/bin/docker exec {{ first_rac_node }} sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
+          # when the binaries are installed silently, the root script does not show output by default,
+          #   this step modifies the root script to show the output
+          # /usr/bin/docker exec rac1 sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
+          command: >
+                   /usr/bin/docker exec {{ first_rac_node }}
+                   sed -i '/rootmacro.sh/s/$/ -stdout/'
+                   {{
+                     oracle_binaries |
+                     selectattr('type', 'equalto', 'grid') |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='oracle_home') | first
+                   }}/root.sh
           
+
         - name: Run grid infrastructure root scripts
-          command: "/usr/bin/docker exec {{ first_rac_node }} /u01/app/12.1.0/grid/root.sh"
+          # /usr/bin/docker exec rac1 /u01/app/12.1.0/grid/root.sh
+          command: >
+                   /usr/bin/docker exec {{ first_rac_node }}
+                   {{
+                     oracle_binaries |
+                     selectattr('type', 'equalto', 'grid') |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='oracle_home') | first
+                   }}/root.sh
           register: configure_grid_root_result
       tags:
         - configure_grid_root
-        - docker
+
 
     - block:
         - name: Create grid tools config response file
+          # when installing the grid infrastructure in silent mode, the extra step of running the grid
+          #   tools configuration script is necessary, this step creates the response file for the script
+          # /srv/docker/rac_nodes/custom_services/tools_config.rsp
           lineinfile:
             dest: "{{ operating_system.rac_node_directory }}/tools_config.rsp"
             state: present
@@ -54,39 +100,64 @@
           with_items:
             - "{{ installation_files | selectattr('type', 'equalto', 'grid') | map(attribute='tools_configuration_parameters') | first | list }}"
 
+
         - name: Configure grid infrastructure tools
+          # run the tools configuration script with the response file created from the last task
+          # /usr/bin/docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
           command: >
-                 /usr/bin/docker exec {{ first_rac_node }} su -
-                 {{
-                   operating_system.grid_infrastructure.users |
-                   selectattr('title', 'equalto', 'owner') |
-                   map(attribute='name') |
-                   first
-                 }} -c "/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
+                   /usr/bin/docker exec {{ first_rac_node }} su -
+                   {{
+                     operating_system.grid_infrastructure.users |
+                     selectattr('title', 'equalto', 'owner') |
+                     map(attribute='name') | first
+                   }} -c "{{
+                     oracle_binaries |
+                     selectattr('type', 'equalto', 'grid') |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='oracle_home') | first
+                   }}/cfgtoollogs/configToolAllCommands
+                   RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
           register: configure_grid_tools_result
       always:
         - name: Print readable previous command output
           debug:
             var: configure_grid_tools_result.stdout_lines
 
+
         - name: Remove grid tools config response file
+          # /srv/docker/rac_nodes/custom_services/tools_config.rsp
           file:
             path: "{{ operating_system.rac_node_directory }}/tools_config.rsp"
             state: absent
           become: True
       tags:
         - configure_grid_tools
-        - docker
+
+
+##########################################################################################
+#############  Enable the database binaries for RAC
+##########################################################################################
 
     - name: Relink database binaries for RAC
+      # the database binaries are installed when there is only one node so they are not enabled for RAC,
+      #   this step relinks the 'oracle' executable for RAC
+      # /usr/bin/docker exec rac1 su - oracle -c "export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && \
+      #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && \
+      #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
       command: >
-             /usr/bin/docker exec {{ first_rac_node }} su -
-             {{
-               operating_system.database.users |
-               selectattr('title', 'equalto', 'owner') |
-               map(attribute='name') |
-               first
-             }} -c "export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
+               /usr/bin/docker exec {{ first_rac_node }} su -
+               {{
+                 operating_system.database.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }} -c
+               "export ORACLE_HOME={{
+                 oracle_binaries |
+                 selectattr('type', 'equalto', 'database') |
+                 selectattr('version', 'equalto', '12.1.0.2') |
+                 map(attribute='oracle_home') | first
+               }}
+               && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on
+               && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
       tags:
         - relink_database_binaries_for_rac
-        - docker

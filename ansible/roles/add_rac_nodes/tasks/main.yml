@@ -1,25 +1,45 @@
+# Used to provision an additional rac node container after rac1 has been created
+# 'this_rac_node' and 'this_image' variables must be set
+# All jinja2 templates are in the common role templates folder
 
-    - name: Create new rac node container
+
+##########################################################################################
+#############  Create an additional rac node container
+##########################################################################################
+
+    - name: Create additional rac node container
+      # call the start_rac_node.yml common task, the 'this_rac_node' variable was set by the calling
+      #   playbook, the 'this_image' variable is set to the rac node image which was created by the
+      #   'create_oracle_image' role
+      # ../../common/tasks/start_rac_node.yml this_image=giinstalled
       include: ../../common/tasks/start_rac_node.yml this_image=giinstalled
       tags:
         - create_additional_container
 
+
+##########################################################################################
+#############  Modify the container to join the existing cluster
+##########################################################################################
+
     - block:
         - name: Add new rac node container into cluster
+          # /usr/bin/docker exec rac1 su - grid -c '/u01/app/12.1.0/grid/addnode/addnode.sh \
+          #   "CLUSTER_NEW_NODES={rac2}" "CLUSTER_NEW_VIRTUAL_HOSTNAMES={rac2-vip}" \
+          #   -waitforcompletion -silent -ignoreSysPrereqs -force -noCopy'
           command: >
-                 /usr/bin/docker exec {{ first_rac_node }} su -
-                 {{
-                   operating_system.grid_infrastructure.users |
-                   selectattr('title', 'equalto', 'owner') |
-                   map(attribute='name') |
-                   first
-                 }} -c '/u01/app/12.1.0/grid/addnode/addnode.sh
-                 "CLUSTER_NEW_NODES={% raw %}{{% endraw %}{{ this_rac_node }}{% raw %}}{% endraw %}"
-                 "CLUSTER_NEW_VIRTUAL_HOSTNAMES={% raw %}{{% endraw %}{{ this_rac_node }}-vip{% raw %}}{% endraw %}"
-                 -waitforcompletion -silent -ignoreSysPrereqs -force -noCopy'
+                   /usr/bin/docker exec {{ first_rac_node }} su -
+                   {{
+                     operating_system.grid_infrastructure.users |
+                     selectattr('title', 'equalto', 'owner') |
+                     map(attribute='name') | first
+                   }} -c '/u01/app/12.1.0/grid/addnode/addnode.sh
+                   "CLUSTER_NEW_NODES={% raw %}{{% endraw %}{{ this_rac_node }}{% raw %}}{% endraw %}"
+                   "CLUSTER_NEW_VIRTUAL_HOSTNAMES={% raw %}{{% endraw %}{{ this_rac_node }}-vip{% raw %}}{% endraw %}"
+                   -waitforcompletion -silent -ignoreSysPrereqs -force -noCopy'
           register: add_new_node_result
           changed_when: (add_new_node_result.rc == 0 ) or (add_new_node_result.rc == 6 )
           failed_when: (add_new_node_result.rc != 0) and (add_new_node_result.rc != 6 )
+
       always:
         - name: Print readable previous command output
           debug:
@@ -27,23 +47,56 @@
       tags:
         - add_new_node_to_cluster
 
+
     - block:
         - name: Modify the root script to show output
-          command: "/usr/bin/docker exec {{ this_rac_node }} sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
-          
+          # when the binaries are installed silently, the root script does not show output by default,
+          #   this step modifies the root script to show the output
+          # /usr/bin/docker exec rac2 sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
+          command: >
+                   /usr/bin/docker exec {{ this_rac_node }}
+                   sed -i '/rootmacro.sh/s/$/ -stdout/'
+                   {{
+                     oracle_binaries |
+                     selectattr('type', 'equalto', 'grid') |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='oracle_home') | first
+                   }}/root.sh
+
+
         - name: Run grid infrastructure root scripts
-          command: "/usr/bin/docker exec {{ this_rac_node }} /u01/app/12.1.0/grid/root.sh"
+          # /usr/bin/docker exec rac2 /u01/app/12.1.0/grid/root.sh
+          command: >
+                   /usr/bin/docker exec {{ this_rac_node }}
+                   {{
+                     oracle_binaries |
+                     selectattr('type', 'equalto', 'grid') |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='oracle_home') | first
+                   }}/root.sh
       tags:
         - configure_grid_add_node_root
 
     - name: Relink database binaries for RAC
+      # the database binaries are installed when there is only one node so they are not enabled for RAC,
+      #   this step relinks the 'oracle' executable for RAC
+      # /usr/bin/docker exec rac2 su - oracle -c "export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && \
+      #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && \
+      #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
       command: >
-             /usr/bin/docker exec {{ this_rac_node }} su -
-             {{
-               operating_system.database.users |
-               selectattr('title', 'equalto', 'owner') |
-               map(attribute='name') |
-               first
-             }} -c "export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
+               /usr/bin/docker exec {{ this_rac_node }} su -
+               {{
+                 operating_system.database.users |
+                 selectattr('title', 'equalto', 'owner') |
+                 map(attribute='name') | first
+               }} -c
+               "export ORACLE_HOME={{
+                 oracle_binaries |
+                 selectattr('type', 'equalto', 'database') |
+                 selectattr('version', 'equalto', '12.1.0.2') |
+                 map(attribute='oracle_home') | first
+               }}
+               && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on
+               && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
       tags:
         - relink_database_binaries_for_rac
