@@ -12,7 +12,7 @@ This project was built using CoreOS. See the [COREOS.md] (https://github.com/Set
 
 
 ## Oracle installation files
-Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage/12.1.0`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage/12.1.0`.
+Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage/12.1.0.2`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage/12.1.0.2`.
 
 
 ## ASM
@@ -151,7 +151,7 @@ docker network connect --ip 10.10.10.12 pub nfs
 ```
 
 
-## RAC Node
+## RAC Node Image
 The RAC node container will be used for the grid infrastructure and database software. This process can be duplicated to create as many nodes as you want in your cluster.
 
 Create a custom service and a scripts directory.
@@ -230,14 +230,15 @@ Connect to the RAC node container and execute the grid infrastructure installer.
 During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
 docker exec rac1 su - grid -c ' \
-/stage/grid/runInstaller -ignoreSysPrereqs -silent -force \
+/stage/12.1.0.2/grid/runInstaller -waitforcompletion \
+-ignoreSysPrereqs -silent -force \
 "INVENTORY_LOCATION=/u01/app/oraInventory" \
 "UNIX_GROUP_NAME=oinstall" \
 "ORACLE_HOME=/u01/app/12.1.0/grid" \
 "ORACLE_BASE=/u01/app/grid" \
 "oracle.install.option=CRS_SWONLY" \
 "oracle.install.asm.OSDBA=asmdba" \
-"oracle.install.asm.OSOPER=" \
+"oracle.install.asm.OSOPER=asmoper" \
 "oracle.install.asm.OSASM=asmadmin"'
 ```
 
@@ -252,7 +253,8 @@ Connect to the RAC node container and execute the database installer. This will 
 During the installation, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
 ```
 docker exec rac1 su - oracle -c ' \
-/stage/database/runInstaller -ignoreSysPrereqs -silent -force \
+/stage/12.1.0.2/database/runInstaller -waitforcompletion \
+-ignoreSysPrereqs -silent -force \
 "oracle.install.option=INSTALL_DB_SWONLY" \
 "INVENTORY_LOCATION=/u01/app/oraInventory" \
 "UNIX_GROUP_NAME=oinstall" \
@@ -260,10 +262,10 @@ docker exec rac1 su - oracle -c ' \
 "ORACLE_BASE=/u01/app/oracle" \
 "oracle.install.db.InstallEdition=EE" \
 "oracle.install.db.DBA_GROUP=dba" \
-"oracle.install.db.BACKUPDBA_GROUP=dba" \
-"oracle.install.db.DGDBA_GROUP=dba" \
-"oracle.install.db.KMDBA_GROUP=dba" \
-"oracle.install.db.CLUSTER_NODES=rac1" \
+"oracle.install.db.OPER_GROUP=oper" \
+"oracle.install.db.BACKUPDBA_GROUP=backupdba" \
+"oracle.install.db.DGDBA_GROUP=dgdba" \
+"oracle.install.db.KMDBA_GROUP=kmdba" \
 "DECLINE_SECURITY_UPDATES=true"'
 ```
 
@@ -277,6 +279,7 @@ Exit the RAC node container and create a new image which will be used as the bas
 docker commit rac1 giinstalled
 ```
 
+## First RAC Node Container (rac1)
 Create a new RAC node container from the image you just created.
 ```
 docker rm -f rac1
