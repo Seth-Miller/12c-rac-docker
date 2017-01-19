@@ -78,7 +78,6 @@ docker network connect --ip 10.10.10.10 pub bind
 Start the BIND container.
 ```
 docker start bind
-docker restart bind
 ```
 
 
@@ -119,8 +118,8 @@ docker start dhcpd
 ```
 
 
-# NFS
-The NFS server will share a host OS directory with the RAC node containers over NFS. The NFS server will be connected to the RAC node containers through a Docker link.
+## NFS
+The NFS server will share a host OS directory with the RAC node containers over NFS.
 
 Create the configuration directory.
 ```
@@ -136,8 +135,6 @@ cp ganesha.conf /srv/docker/nfs/
 Create the NFS container.
 ```
 docker run \
---interactive \
---tty \
 --detach \
 --privileged \
 --name nfs \
@@ -146,6 +143,11 @@ docker run \
 --volume /oraclenfs:/oraclenfs \
 --dns 10.10.10.10 \
 sethmiller/nfs
+```
+
+Connect the pub docker network to the NFS container.
+```
+docker network connect --ip 10.10.10.12 pub nfs
 ```
 
 
