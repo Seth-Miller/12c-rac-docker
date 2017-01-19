@@ -12,7 +12,7 @@ This project was built using CoreOS. See the [COREOS.md] (https://github.com/Set
 
 
 ## Oracle installation files
-Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage`.
+Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage/12.1.0`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage/12.1.0`.
 
 
 ## ASM
