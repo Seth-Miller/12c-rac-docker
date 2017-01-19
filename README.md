@@ -1,7 +1,7 @@
 # 12c-rac-docker
 Multiple node Oracle RAC cluster running in Docker containers.
 
-# How to use
+## How to use
 This setup uses block devices for the ASM DATA diskgroup which the grid infrastructure requires during installation. The recommendation is to use three disks that are at least 4GB each in size.
 
 It is important when creating the BIND and DHCPD containers that the BIND container is created first. The reason is that there is a key created as part of the BIND image build that DHCPD will use for dynamic dns updates and the key needs to exist when the DHCPD container is created.
@@ -11,18 +11,18 @@ The passwords for the non-privileged user accounts are all set to `oracle_4U`.
 This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions on how to use CoreOS for this project.
 
 
-# Oracle installation files
+## Oracle installation files
 Download the Oracle 12c Grid Infrastructure and Database installation files and unzip them in a directory on the host. The directory will be mounted as a volume in the RAC node containers for installation. The host directory used in this example is `/oracledata/stage`. Once unzipped, there should be a `grid` and `database` folder in `/oracledata/stage`.
 
 
-# ASM
+## ASM
 Udev is used in the RAC node containers to give the ASM block devices correct permissions and friendly names. ASMLib could also be used but I stopped using that a couple of years ago because it appears that it will go away at some point in favor of ASM Filter Driver (AFD).
 
 Modify the `99-asm-disks.rules` file to reflect the devices on the host system that you have designated as ASM disks. For example, I have designated /dev/sdd, /dev/sde, and /dev/sdf as the three disks that will be used in my DATA ASM disk group.
 ```
-KERNEL=="sdd", SYMLINK+="asmdisks/asm-clu-121-DATA-disk1", GROUP="54321"
-KERNEL=="sde", SYMLINK+="asmdisks/asm-clu-121-DATA-disk2", GROUP="54321"
-KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", GROUP="54321"
+KERNEL=="sdd", SYMLINK+="asmdisks/asm-clu-121-DATA-disk1", OWNER="54421", GROUP="54422"
+KERNEL=="sde", SYMLINK+="asmdisks/asm-clu-121-DATA-disk2", OWNER="54421", GROUP="54422"
+KERNEL=="sdf", SYMLINK+="asmdisks/asm-clu-121-DATA-disk3", OWNER="54421", GROUP="54422"
 ```
 
 NFS is used in the RAC node containers for the NDATA ASM disk group which uses file devices over NFS. The directory on the host OS that will be shared across the RAC node containers is `/oraclenfs`. Create three files on the host OS using `dd`.
