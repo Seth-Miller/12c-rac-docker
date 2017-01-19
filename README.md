@@ -75,7 +75,7 @@ sethmiller/bind \
 
 
 # DHCPD
-The DHCPD container will be used for generating IP addresses needed by the cluster nodes.
+The DHCPD container will be used for generating IP addresses needed by the cluster nodes. It is also responsible for updating DNS with hostname IP pairs.
 
 Create the configuration directory.
 ```
@@ -91,8 +91,6 @@ cp dhcpd.conf /srv/docker/dhcpd/
 Create the DHCPD container but don't start it until the step following this one is complete.
 ```
 docker create \
---interactive \
---tty \
 --name dhcpd \
 --hostname dhcpd \
 --volume /srv/docker/dhcpd:/data \
