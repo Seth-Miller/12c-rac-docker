@@ -14,8 +14,7 @@
                this_image="{{
                  docker.containers |
                  selectattr('name', 'equalto', first_rac_node) |
-                 map(attribute='image') |
-                 first
+                 map(attribute='image') | first
                }}"
       tags:
         - create_rac1_container
@@ -27,19 +26,26 @@
 
     - block:
         - name: Install grid infrastructure binaries
-          # /usr/bin/docker exec rac1 su - grid -c "/stage/12.1.0.2/grid/runInstaller -waitforcompletion ..."
+          # docker exec rac1 su - grid -c '/stage/12.1.0.2/grid/runInstaller -waitforcompletion \
+          #   -ignoreSysPrereqs -silent -force \
+          #   "INVENTORY_LOCATION=/u01/app/oraInventory" \
+          #   "UNIX_GROUP_NAME=oinstall" \
+          #   "ORACLE_HOME=/u01/app/12.1.0/grid" \
+          #   "ORACLE_BASE=/u01/app/grid" \
+          #   "oracle.install.option=CRS_SWONLY" \
+          #   "oracle.install.asm.OSDBA=asmdba" \
+          #   "oracle.install.asm.OSOPER=asmoper" \
+          #   "oracle.install.asm.OSASM=asmadmin"'
           command: >
                    /usr/bin/docker exec {{ first_rac_node }} su -
                    {{
                      operating_system.grid_infrastructure.users |
                      selectattr('title', 'equalto', 'owner') |
-                     map(attribute='name') |
-                     first
+                     map(attribute='name') | first
                    }} -c "/stage/{{
                      installation_files |
                      selectattr('type', 'equalto', 'grid') |
-                     map(attribute='version') |
-                     first
+                     map(attribute='version') | first
                    }}/grid/runInstaller
                    {{
                      installation_files |
@@ -53,8 +59,8 @@
 
 
         - name: Run grid infrastructure root scripts
-          # /usr/bin/docker exec rac1 /u01/app/oraInventory/orainstRoot.sh
-          # /usr/bin/docker exec rac1 /u01/app/oraInventory/root.sh
+          # docker exec rac1 /u01/app/oraInventory/orainstRoot.sh
+          # docker exec rac1 /u01/app/oraInventory/root.sh
           command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
           with_items:
             - >
@@ -76,19 +82,30 @@
 
     - block:
         - name: Install database binaries
-          # /usr/bin/docker exec rac1 su - oracle -c "/stage/12.1.0.2/database/runInstaller -waitforcompletion ..."
+          # docker exec rac1 su - oracle -c '/stage/12.1.0.2/database/runInstaller -waitforcompletion \
+          #   -ignoreSysPrereqs -silent -force \
+          #   "oracle.install.option=INSTALL_DB_SWONLY" \
+          #   "INVENTORY_LOCATION=/u01/app/oraInventory" \
+          #   "UNIX_GROUP_NAME=oinstall" \
+          #   "ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1" \
+          #   "ORACLE_BASE=/u01/app/oracle" \
+          #   "oracle.install.db.InstallEdition=EE" \
+          #   "oracle.install.db.DBA_GROUP=dba" \
+          #   "oracle.install.db.OPER_GROUP=oper" \
+          #   "oracle.install.db.BACKUPDBA_GROUP=backupdba" \
+          #   "oracle.install.db.DGDBA_GROUP=dgdba" \
+          #   "oracle.install.db.KMDBA_GROUP=kmdba" \
+          #   "DECLINE_SECURITY_UPDATES=true"'
           command: >
                    /usr/bin/docker exec {{ first_rac_node }} su -
                    {{
                      operating_system.database.users |
                      selectattr('title', 'equalto', 'owner') |
-                     map(attribute='name') |
-                     first
+                     map(attribute='name') | first
                    }} -c "/stage/{{
                      installation_files |
                      selectattr('type', 'equalto', 'database') |
-                     map(attribute='version') |
-                     first
+                     map(attribute='version') | first
                    }}/database/runInstaller
                    {{
                      installation_files |
@@ -102,7 +119,7 @@
 
 
         - name: Run database installer root scripts
-          # /usr/bin/docker exec rac1 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+          # docker exec rac1 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
           command: "/usr/bin/docker exec {{ first_rac_node }} {{ item }}"
           with_items:
             - >
@@ -110,7 +127,6 @@
                  selectattr('type', 'equalto', 'database') |
                  selectattr('version', 'equalto', '12.1.0.2') |
                  map(attribute='oracle_home') | first }}/root.sh
-
       always:
         - name: Print readable previous command output
           debug:
@@ -124,19 +140,17 @@
 ##########################################################################################
 
     - name: Update OPatch for grid infrastructure
-      # /usr/bin/docker exec rac1 su - grid -c "cp -a /stage/12.1.0.2/OPatch/* /u01/app/12.1.0/grid/OPatch/"
+      # docker exec rac1 su - grid -c "cp -a /stage/12.1.0.2/OPatch/* /u01/app/12.1.0/grid/OPatch/"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
                {{
                  operating_system.grid_infrastructure.users |
                  selectattr('title', 'equalto', 'owner') |
-                 map(attribute='name') |
-                 first
+                 map(attribute='name') | first
                }} -c "cp -a /stage/{{
                  installation_files |
                  selectattr('type', 'equalto', 'opatch') |
-                 map(attribute='version') |
-                 first
+                 map(attribute='version') | first
                }}/OPatch/*
                {{
                  oracle_binaries |
@@ -150,7 +164,7 @@
 
 
     - name: Update OPatch for database
-      # /usr/bin/docker exec rac1 su - oracle -c "cp -a /stage/12.1.0.2/OPatch/* /u01/app/oracle/product/12.1.0/dbhome_1/OPatch/"
+      # docker exec rac1 su - oracle -c "cp -a /stage/12.1.0.2/OPatch/* /u01/app/oracle/product/12.1.0/dbhome_1/OPatch/"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
                {{
@@ -178,7 +192,7 @@
 ##########################################################################################
 
     - name: Apply bundle patch to grid infrastructure
-      # /usr/bin/docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/OPatch/opatch apply \
+      # docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/OPatch/opatch apply \
       #   /stage/12.1.0.2/23615334/21436941 -oh /u01/app/12.1.0/grid -silent"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
@@ -210,7 +224,7 @@
 
 
     - name: Cleanup .opatch_storage in grid infrastructure home
-      # /usr/bin/docker exec rac1 su - grid -c "find /u01/app/12.1.0/grid/.patch_storage -mindepth 1 -type d -exec rm -rf {} +"
+      # docker exec rac1 su - grid -c "find /u01/app/12.1.0/grid/.patch_storage -mindepth 1 -type d -exec rm -rf {} +"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
                {{
@@ -229,7 +243,7 @@
 
 
     - name: Apply bundle patch to database
-      # /usr/bin/docker exec rac1 su - oracle -c "/u01/app/oracle/product/12.1.0/dbhome_1/OPatch/opatch apply \
+      # docker exec rac1 su - oracle -c "/u01/app/oracle/product/12.1.0/dbhome_1/OPatch/opatch apply \
       #   /stage/12.1.0.2/23615334/21436941 -oh /u01/app/oracle/product/12.1.0/dbhome_1 -silent"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
@@ -265,7 +279,7 @@
 ##########################################################################################
 
     - name: Apply one-off patches to database
-      # /usr/bin/docker exec rac1 su - oracle -c "/u01/app/oracle/product/12.1.0/dbhome_1/OPatch/opatch apply \
+      # docker exec rac1 su - oracle -c "/u01/app/oracle/product/12.1.0/dbhome_1/OPatch/opatch apply \
       #   /stage/12.1.0.2/19404068 -oh /u01/app/oracle/product/12.1.0/dbhome_1 -silent"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
@@ -297,7 +311,7 @@
 
 
     - name: Cleanup .opatch_storage in database home
-      # /usr/bin/docker exec rac1 su - grid -c "find /u01/app/oracle/product/12.1.0/dbhome_1/.patch_storage -mindepth 1 -type d -exec rm -rf {} +"
+      # docker exec rac1 su - grid -c "find /u01/app/oracle/product/12.1.0/dbhome_1/.patch_storage -mindepth 1 -type d -exec rm -rf {} +"
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
                {{
@@ -320,7 +334,7 @@
 ##########################################################################################
 
     - name: Commit rac1 container to an image
-      # /usr/bin/docker commit rac1 giinstalled
+      # docker commit rac1 giinstalled
       command: "/usr/bin/docker commit {{ first_rac_node }} giinstalled"
       tags:
         - commit_rac1

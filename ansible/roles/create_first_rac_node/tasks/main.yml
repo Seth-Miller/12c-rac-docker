@@ -24,7 +24,35 @@
         - name: Configure grid infrastructure binaries
           # the grid infrastructure binaries have already been installed as part of the image,
           #   this step configures them
-          # /usr/bin/docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/crs/config/config.sh -waitforcompletion .."
+          # docker exec rac1 su - grid -c ' /u01/app/12.1.0/grid/crs/config/config.sh \
+          #   -waitforcompletion -ignoreSysPrereqs -silent \
+          #   "INVENTORY_LOCATION=/u01/app/oraInventory" \
+          #   "oracle.install.option=CRS_CONFIG" \
+          #   "ORACLE_BASE=/u01/app/grid" \
+          #   "ORACLE_HOME=/u01/app/12.1.0/grid" \
+          #   "oracle.install.asm.OSDBA=asmdba" \
+          #   "oracle.install.asm.OSOPER=asmoper" \
+          #   "oracle.install.asm.OSASM=asmadmin" \
+          #   "oracle.install.crs.config.gpnp.scanName=clu-121-scan.clu-121.example.com" \
+          #   "oracle.install.crs.config.gpnp.scanPort=1521 " \
+          #   "oracle.install.crs.config.ClusterType=STANDARD" \
+          #   "oracle.install.crs.config.clusterName=clu-121" \
+          #   "oracle.install.crs.config.gpnp.configureGNS=true" \
+          #   "oracle.install.crs.config.autoConfigureClusterNodeVIP=true" \
+          #   "oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS" \
+          #   "oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com" \
+          #   "oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com" \
+          #   "oracle.install.crs.config.clusterNodes=rac1:AUTO" \
+          #   "oracle.install.crs.config.networkInterfaceList=eth-pub:10.10.10.0:1,eth-priv:11.11.11.0:2" \
+          #   "oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE" \
+          #   "oracle.install.crs.config.useIPMI=false" \
+          #   "oracle.install.asm.SYSASMPassword=oracle_4U" \
+          #   "oracle.install.asm.monitorPassword=oracle_4U" \
+          #   "oracle.install.asm.diskGroup.name=DATA" \
+          #   "oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
+          #   "oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
+          #   "oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
+          #   "oracle.install.asm.useExistingDiskGroup=false"'
           command: >
                    /usr/bin/docker exec {{ first_rac_node }} su -
                    {{
@@ -58,7 +86,7 @@
         - name: Modify the root script to show output
           # when the binaries are installed silently, the root script does not show output by default,
           #   this step modifies the root script to show the output
-          # /usr/bin/docker exec rac1 sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
+          # docker exec rac1 sed -i '/rootmacro.sh/s/$/ -stdout/' /u01/app/12.1.0/grid/root.sh"
           command: >
                    /usr/bin/docker exec {{ first_rac_node }}
                    sed -i '/rootmacro.sh/s/$/ -stdout/'
@@ -71,7 +99,7 @@
           
 
         - name: Run grid infrastructure root scripts
-          # /usr/bin/docker exec rac1 /u01/app/12.1.0/grid/root.sh
+          # docker exec rac1 /u01/app/12.1.0/grid/root.sh
           command: >
                    /usr/bin/docker exec {{ first_rac_node }}
                    {{
@@ -90,6 +118,11 @@
           # when installing the grid infrastructure in silent mode, the extra step of running the grid
           #   tools configuration script is necessary, this step creates the response file for the script
           # /srv/docker/rac_nodes/custom_services/tools_config.rsp
+          #   oracle.assistants.asm|S_ASMPASSWORD=<password>
+          #   oracle.assistants.asm|S_ASMMONITORPASSWORD=<password>
+          #   oracle.crs|oracle_install_crs_ConfigureMgmtDB=FALSE
+          #   oracle.crs|oracle_install_crs_MgmtDB_CDB=FALSE
+          #   oracle.crs|oracle_install_crs_MgmtDB_Std=FALSE
           lineinfile:
             dest: "{{ operating_system.rac_node_directory }}/tools_config.rsp"
             state: present
@@ -103,7 +136,8 @@
 
         - name: Configure grid infrastructure tools
           # run the tools configuration script with the response file created from the last task
-          # /usr/bin/docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
+          # docker exec rac1 su - grid -c "/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands \
+          #   RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp"
           command: >
                    /usr/bin/docker exec {{ first_rac_node }} su -
                    {{
@@ -125,7 +159,7 @@
 
 
         - name: Remove grid tools config response file
-          # /srv/docker/rac_nodes/custom_services/tools_config.rsp
+          # rm -f /srv/docker/rac_nodes/custom_services/tools_config.rsp
           file:
             path: "{{ operating_system.rac_node_directory }}/tools_config.rsp"
             state: absent
@@ -141,9 +175,9 @@
     - name: Relink database binaries for RAC
       # the database binaries are installed when there is only one node so they are not enabled for RAC,
       #   this step relinks the 'oracle' executable for RAC
-      # /usr/bin/docker exec rac1 su - oracle -c "export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && \
+      # docker exec rac1 su - oracle -c 'export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && \
       #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && \
-      #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
+      #   make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle'
       command: >
                /usr/bin/docker exec {{ first_rac_node }} su -
                {{

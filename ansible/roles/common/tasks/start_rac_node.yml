@@ -119,8 +119,7 @@
 
     - name: Enable asm disk udev configuration
       # link the udev configuration files to the udev rules.d directory
-      # /usr/bin/docker exec rac1 /usr/bin/ls -s /usr/lib/custom_services/99-asm-disk.rules \
-      #   /etc/udev/rules.d/
+      # docker exec rac1 ln -s /usr/lib/custom_services/99-asm-disk.rules /etc/udev/rules.d/
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/ln -s /usr/lib/custom_services/99-asm-disk.rules /etc/udev/rules.d/
@@ -134,8 +133,8 @@
 
     - name: Reload udev rules
       # reload udev rules to make ASM disk changes take effect
-      # /usr/bin/docker exec rac1 /usr/sbin/udevadm control --reload-rules
-      # /usr/bin/docker exec rac1 /usr/sbin/udevadm trigger
+      # docker exec rac1 udevadm control --reload-rules
+      # docker exec rac1 udevadm trigger
       command: "/usr/bin/docker exec {{ this_rac_node }} {{ item }}"
       become: True
       with_items:
@@ -158,7 +157,7 @@
 
     - name: Enable nfs mount
       # link the nfs mount systemd configuration files to the systemd directory
-      # /usr/bin/docker exec rac1 /usr/bin/ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
+      # docker exec rac1 ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
@@ -172,7 +171,7 @@
 
     - name: Reload systemd
       # reload systemd to enable the nfs mount service
-      # /usr/bin/docker exec rac1 /usr/bin/systemctl daemon-reload
+      # docker exec rac1 systemctl daemon-reload
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/systemctl daemon-reload
@@ -183,7 +182,7 @@
 
     - name: Start nfs mount
       # start the systemd nfs mount service
-      # /usr/bin/docker exec rac1 /usr/bin/systemctl start oraclenfs.mount
+      # docker exec rac1 systemctl start oraclenfs.mount
       command: >
         /usr/bin/docker exec {{ this_rac_node }}
         /usr/bin/systemctl start oraclenfs.mount

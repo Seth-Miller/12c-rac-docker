@@ -1,5 +1,12 @@
 
     - name: Create the disk group
+      # docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmca \
+      #   -silent -createDiskGroup \
+      #   -diskGroupName NDATA \
+      #   -redundancy EXTERNAL \
+      #   -disk '/oraclenfs/asm-clu-121-NDATA-disk1' \
+      #   -disk '/oraclenfs/asm-clu-121-NDATA-disk2' \
+      #   -disk '/oraclenfs/asm-clu-121-NDATA-disk3'"
       command: >-
                /usr/bin/docker exec {{ first_rac_node }}
                /usr/bin/su -
@@ -14,13 +21,13 @@
                  selectattr('type', 'equalto', 'grid') |
                  selectattr('version', 'equalto', '12.1.0.2') |
                  map(attribute='oracle_home') | first
-               }}/bin/asmcmd mkdg '
-               <dg name=\"{{ this_disk_group }}\" redundancy=\"external\">
+               }}/bin/asmca -silent -createDiskGroup
+               -diskGroupName {{ this_disk_group }}
+               -redundancy EXTERNAL
                {% for disk in asm_disk_groups |
                   selectattr('group', 'equalto', this_disk_group) |
                   list | map(attribute='disks') | first %}
-               <dsk string=\"{{ disk.path }}\"/>
-               {% endfor %}
-               </dg>'"
+               -disk \"{{ disk.path }}\"
+               {% endfor %}"
       tags:
         - create_disk_group
