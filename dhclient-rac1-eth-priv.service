@@ -1,0 +1,10 @@
+[Unit]
+Description=Start DHCP client for eth-priv
+ConditionPathExists=/sys/class/net/eth-priv
+
+[Service]
+ExecStart=/usr/sbin/dhclient -d -H rac1-priv -pf /var/run/dhclient-eth-priv.pid eth-priv
+ExecStop=/usr/sbin/dhclient -x eth-priv
+
+[Install]
+WantedBy=multi-user.target

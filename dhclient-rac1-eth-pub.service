@@ -1,0 +1,10 @@
+[Unit]
+Description=Start DHCP client for eth-pub
+ConditionPathExists=/sys/class/net/eth-pub
+
+[Service]
+ExecStart=/usr/sbin/dhclient -d -H rac1 -pf /var/run/dhclient-eth-pub.pid eth-pub
+ExecStop=/usr/sbin/dhclient -x eth-pub
+
+[Install]
+WantedBy=multi-user.target
