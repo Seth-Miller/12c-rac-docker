@@ -289,21 +289,18 @@ docker run \
 --privileged \
 --name rac1 \
 --hostname rac1 \
+--volume /srv/docker/rac_nodes/custom_services:/usr/lib/custom_services \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---dns 10.10.10.10 \
---link nfs:nfs \
 --shm-size 2048m \
+--dns 10.10.10.10 \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
 ```
 
-Create the two networks and start dhclient on them as was done earlier. This step does not need to be done if you are continuing to use the same container.
+Start the networks in the RAC node container as was done previously.
 ```
-sudo ./networks-rac1.sh
-
-docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
-docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
+sudo /srv/docker/scripts/networks-rac1.sh
 ```
 
 Create a second RAC node container.
