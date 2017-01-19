@@ -57,14 +57,11 @@ docker network create --subnet=11.11.11.0/24 priv
 ## BIND
 The BIND container will be used for DNS for the cluster.
 
-Create the BIND container. Unless you need it, disable the administration GUI `--env WEBMIN_ENABLED=false`. The `-4` option prevents the named/bind process from listening on the IPV6 networks.
+Create the BIND container but don't start it until the networks have been added. Unless you need it, disable the administration GUI `--env WEBMIN_ENABLED=false`. The `-4` option prevents the named/bind process from listening on the IPV6 networks.
 ```
-docker run \
---detach \
+docker create \
 --name bind \
 --hostname bind \
---network pub \
---ip 10.10.10.10 \
 --publish 53:53/tcp \
 --publish 53:53/udp \
 --volume /srv/docker/bind:/data \
@@ -73,8 +70,19 @@ sethmiller/bind \
 -4
 ```
 
+Connect the 10.10.10.0/24 network to the BIND container.
+```
+docker network connect --ip 10.10.10.10 pub bind
+```
 
-# DHCPD
+Start the BIND container.
+```
+docker start bind
+docker restart bind
+```
+
+
+## DHCPD
 The DHCPD container will be used for generating IP addresses needed by the cluster nodes. It is also responsible for updating DNS with hostname IP pairs.
 
 Create the configuration directory.
@@ -88,7 +96,7 @@ Copy the dhcpd.conf file to the configuration directory.
 cp dhcpd.conf /srv/docker/dhcpd/
 ```
 
-Create the DHCPD container but don't start it until the step following this one is complete.
+Create the DHCPD container but don't start it until the networks have been added.
 ```
 docker create \
 --name dhcpd \
