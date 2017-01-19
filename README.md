@@ -31,7 +31,8 @@ sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk1 bs=1024k count=2000
 sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk2 bs=1024k count=2000
 sudo dd if=/dev/zero of=/oraclenfs/asm-clu-121-NDATA-disk3 bs=1024k count=2000
 
-sudo chgrp 54421 /oraclenfs/asm*
+sudo chown 54421 /oraclenfs/asm*
+sudo chgrp 54422 /oraclenfs/asm*
 sudo chmod g+w /oraclenfs/asm*
 ```
 
