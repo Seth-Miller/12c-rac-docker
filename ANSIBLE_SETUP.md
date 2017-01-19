@@ -5,21 +5,7 @@ Ansible will be used to set automate the setup and configuration of the project.
 The requirements and instructions for Ansible can be found [here] (http://docs.ansible.com/ansible/intro_installation.html).
 
 
-# Docker
-
-### Docker API
-This project requires the Docker API be installed on the Ansible host.
-```
-sudo pip install --upgrade pip
-sudo pip install --upgrade setuptools
-sudo pip install docker-py
-```
-
-### Docker remote access
-The Docker daemon running on the Docker host must be configured for TCP access. If you are using the CoreOS setup from this project, TCP access for Docker has already been configured.
-
-
-# SSH
+## SSH
 Establish SSH shared key authentication between the Ansible host and the Docker host.
 
 Generate an SSH key pair on the Ansible host if necessary.
@@ -45,14 +31,14 @@ ssh core@<IP of Docker host>
 ```
 
 
-# Ansible Inventory
+## Ansible Inventory
 Add the Docker host IP to the Ansible inventory. If you're using CoreOS, a couple of variables need to be set as part of the host definition as well.
 ```
 <hostname or IP of Docker host>  ansible_ssh_user=core  ansible_python_interpreter=/home/core/bin/python
 ```
 
 
-# CoreOS Bootstrap
+## CoreOS Bootstrap
 CoreOS is an intentionally lean OS and doesn't include an installation of Python which Ansible relies on heavily. If you're using CoreOS, you'll need to bootstrap the OS with a minimal installation of Python called Pypy. Fortunately, the CoreOS developers have developed an easy method to make this work. More info can be found [here] (https://github.com/defunctzombie/ansible-coreos-bootstrap).
 
 ### Install the CoreOS bootstrap
