@@ -303,6 +303,72 @@ Start the networks in the RAC node container as was done previously.
 sudo /srv/docker/scripts/networks-rac1.sh
 ```
 
+Configure the installed grid infrastructure.
+
+During the configuration, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
+```
+docker exec rac1 su - grid -c ' \
+/u01/app/12.1.0/grid/crs/config/config.sh -waitforcompletion \
+-ignoreSysPrereqs -silent \
+"INVENTORY_LOCATION=/u01/app/oraInventory" \
+"oracle.install.option=CRS_CONFIG" \
+"ORACLE_BASE=/u01/app/grid" \
+"ORACLE_HOME=/u01/app/12.1.0/grid" \
+"oracle.install.asm.OSDBA=asmdba" \
+"oracle.install.asm.OSOPER=asmoper" \
+"oracle.install.asm.OSASM=asmadmin" \
+"oracle.install.crs.config.gpnp.scanName=clu-121-scan.clu-121.example.com" \
+"oracle.install.crs.config.gpnp.scanPort=1521 " \
+"oracle.install.crs.config.ClusterType=STANDARD" \
+"oracle.install.crs.config.clusterName=clu-121" \
+"oracle.install.crs.config.gpnp.configureGNS=true" \
+"oracle.install.crs.config.autoConfigureClusterNodeVIP=true" \
+"oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS" \
+"oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com" \
+"oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com" \
+"oracle.install.crs.config.clusterNodes=rac1:AUTO" \
+"oracle.install.crs.config.networkInterfaceList=eth-pub:10.10.10.0:1,eth-priv:11.11.11.0:2" \
+"oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE" \
+"oracle.install.crs.config.useIPMI=false" \
+"oracle.install.asm.SYSASMPassword=oracle_4U" \
+"oracle.install.asm.monitorPassword=oracle_4U" \
+"oracle.install.asm.diskGroup.name=DATA" \
+"oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
+"oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
+"oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
+"oracle.install.asm.useExistingDiskGroup=false"'
+```
+
+Run the root script as the root user.
+```
+docker exec rac1 /u01/app/12.1.0/grid/root.sh
+```
+
+Copy the tools configuration assistant response file from the repository to the custom services directory. Change the passwords in the file if necessary before copying. To save on resources and time, the response file is configured to not install the management database (GIMR). If you want to install the GIMR, remove the last three lines of the response file.
+```
+cp tools_config.rsp /srv/docker/rac_nodes/custom_services/
+```
+
+Run the tools configuration assistant.
+```
+docker exec rac1 su - grid -c '/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands \
+RESPONSE_FILE=/usr/lib/custom_services/tools_config.rsp'
+```
+
+Delete the tools configuration assistant response file.
+```
+rm -f /srv/docker/rac_nodes/custom_services/tools_config.rsp
+```
+
+Since the cluster was not active when the database binaries were installed, the database installation was not enabled for RAC. This step recompiles the `oracle` executable for RAC.
+```
+docker exec rac1 su - oracle -c 'export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && \
+make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && \
+make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle'
+```
+
+
+## Second RAC Node Container (rac2)
 Create a second RAC node container.
 ```
 docker run \
@@ -332,61 +398,9 @@ Configure shared key SSH authentication among all RAC node containers.
 ./fixssh.sh rac1 rac2
 ```
 
-Connect to the first RAC node container and configure the installed grid infrastructure.
 
-During the configuration, you will see the message `Some of the optional prerequisites are not met`. This is normal and a consequence of running in a container.
-```
-docker exec rac1 su - grid -c ' \
-/u01/app/12.1.0/grid/crs/config/config.sh -ignoreSysPrereqs -silent \
-"INVENTORY_LOCATION=/u01/app/oraInventory" \
-"SELECTED_LANGUAGES=en" \
-"oracle.install.option=CRS_CONFIG" \
-"ORACLE_BASE=/u01/app/grid" \
-"ORACLE_HOME=/u01/app/12.1.0/grid" \
-"oracle.install.asm.OSDBA=asmdba" \
-"oracle.install.asm.OSOPER=" \
-"oracle.install.asm.OSASM=asmadmin" \
-"oracle.install.crs.config.gpnp.scanName=clu-121-scan.clu-121.example.com" \
-"oracle.install.crs.config.gpnp.scanPort=1521 " \
-"oracle.install.crs.config.ClusterType=STANDARD" \
-"oracle.install.crs.config.clusterName=clu-121" \
-"oracle.install.crs.config.gpnp.configureGNS=true" \
-"oracle.install.crs.config.autoConfigureClusterNodeVIP=true" \
-"oracle.install.crs.config.gpnp.gnsOption=CREATE_NEW_GNS" \
-"oracle.install.crs.config.gpnp.gnsSubDomain=clu-121.example.com" \
-"oracle.install.crs.config.gpnp.gnsVIPAddress=clu-121-gns.example.com" \
-"oracle.install.crs.config.clusterNodes=rac1.example.com:AUTO,rac2.example.com:AUTO" \
-"oracle.install.crs.config.networkInterfaceList=eth1:10.10.10.0:1,eth2:11.11.11.0:2" \
-"oracle.install.crs.config.storageOption=LOCAL_ASM_STORAGE" \
-"oracle.install.crs.config.useIPMI=false" \
-"oracle.install.asm.SYSASMPassword=oracle_4U" \
-"oracle.install.asm.monitorPassword=oracle_4U" \
-"oracle.install.asm.diskGroup.name=DATA" \
-"oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
-"oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
-"oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
-"oracle.install.asm.useExistingDiskGroup=false"'
-```
 
-Run the root script as the root user on the first RAC node container, then the second. Wait for the first to complete before running the second.
-```
-docker exec rac1 /u01/app/12.1.0/grid/root.sh
-docker exec rac2 /u01/app/12.1.0/grid/root.sh
-```
 
-Copy the configuration assistant response file into the first RAC node container. Change the passwords in the file if necessary before copying.
-```
-docker cp tools_config.rsp rac1:/tmp/
-```
-
-Run the configuration assistant on the first RAC node container only.
-```
-docker exec rac1 su - grid -c '/u01/app/12.1.0/grid/cfgtoollogs/configToolAllCommands RESPONSE_FILE=/tmp/tools_config.rsp'
-```
-
-Delete the configuration assistant response file.
-```
-docker exec rac1 rm -f /tmp/tools_config.rsp
 ```
 
 Configure the database installations for the cluster.
