@@ -335,7 +335,7 @@ docker exec rac1 su - grid -c ' \
 "oracle.install.asm.diskGroup.name=DATA" \
 "oracle.install.asm.diskGroup.redundancy=EXTERNAL" \
 "oracle.install.asm.diskGroup.disks=/dev/asmdisks/asm-clu-121-DATA-disk1,/dev/asmdisks/asm-clu-121-DATA-disk2,/dev/asmdisks/asm-clu-121-DATA-disk3" \
-"oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*" \
+"oracle.install.asm.diskGroup.diskDiscoveryString=/dev/asmdisks/*,/oraclenfs/asm*" \
 "oracle.install.asm.useExistingDiskGroup=false"'
 ```
 
@@ -376,41 +376,51 @@ docker run \
 --privileged \
 --name rac2 \
 --hostname rac2 \
+--volume /srv/docker/rac_nodes/custom_services:/usr/lib/custom_services \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---dns 10.10.10.10 \
---link nfs:nfs \
 --shm-size 2048m \
+--dns 10.10.10.10 \
 giinstalled \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
 ```
 
-Create the two networks and start dhclient on them.
+Copy the dhclient and network scripts from the repository to the custom service and scripts directories respectively.
 ```
-sudo ./networks-rac2.sh
+cp dhclient-rac2-eth-pub.service /srv/docker/rac_nodes/custom_services/
+cp dhclient-rac2-eth-priv.service /srv/docker/rac_nodes/custom_services/
 
-docker exec rac2 dhclient -H rac2 -pf /var/run/dhclient-eth1.pid eth1
-docker exec rac2 dhclient -H rac2-priv -pf /var/run/dhclient-eth2.pid eth2
-```
-
-Configure shared key SSH authentication among all RAC node containers.
-```
-./fixssh.sh rac1 rac2
+cp networks-rac2.sh /srv/docker/scripts/
 ```
 
-
-
-
+Start the networks in the RAC node container.
+```
+sudo /srv/docker/scripts/networks-rac2.sh
 ```
 
-Configure the database installations for the cluster.
+Configure the grid infrastructure installation to join the existing cluster. Keep in mind that these commands must be executed on a node already part of the cluster (rac1).
 ```
-docker exec rac1 su - oracle -c '/u01/app/oracle/product/12.1.0/dbhome_1/addnode/addnode.sh -silent -ignoreSysPrereqs -noCopy CLUSTER_NEW_NODES={rac2}'
-docker exec rac1 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
-docker exec rac2 /u01/app/oracle/product/12.1.0/dbhome_1/root.sh
+docker exec rac1 su - grid -c '/u01/app/12.1.0/grid/addnode/addnode.sh \
+"CLUSTER_NEW_NODES={rac2}" "CLUSTER_NEW_VIRTUAL_HOSTNAMES={rac2-vip}" \
+-waitforcompletion -silent -ignoreSysPrereqs -force -noCopy'
 ```
 
-Optionally, create a database.
+Run the root script as the root user.
+```
+docker exec rac2 /u01/app/12.1.0/grid/root.sh
+```
+
+Recompile the `oracle` executable for RAC.
+```
+docker exec rac2 su - oracle -c 'export ORACLE_HOME=/u01/app/oracle/product/12.1.0/dbhome_1 && \
+make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on && \
+make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle'
+```
+
+
+## Optional Tasks
+
+Create a database.
 ```
 docker exec rac1 su - oracle -c ' \
 /u01/app/oracle/product/12.1.0/dbhome_1/bin/dbca -createDatabase -silent \
@@ -429,11 +439,12 @@ docker exec rac1 su - oracle -c ' \
 -createAsContainerDatabase True'
 ```
 
-Optionally, create the NDATA ASM disk group.
-This currently isn't working because Oracle doesn't seem to like the user space NFS server.
+Create the NDATA ASM disk group.
 ```
-docker cp oraclenfs.mount rac1:/etc/systemd/system/
-docker cp oraclenfs.mount rac2:/etc/systemd/system/
+cp oraclenfs.mount /srv/docker/rac_nodes/custom_services/
+
+docker exec rac1 ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
+docker exec rac2 ln -s /usr/lib/custom_services/oraclenfs.mount /etc/systemd/system/
 
 docker exec rac1 systemctl daemon-reload
 docker exec rac2 systemctl daemon-reload
@@ -441,10 +452,14 @@ docker exec rac2 systemctl daemon-reload
 docker exec rac1 systemctl start oraclenfs.mount
 docker exec rac2 systemctl start oraclenfs.mount
 
-docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd dsset '\
-/dev/asmdisks/*,/oraclenfs/asm*'"
+docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmca \
+-silent -createDiskGroup \
+-diskGroupName NDATA \
+-redundancy EXTERNAL \
+-disk '/oraclenfs/asm-clu-121-NDATA-disk1' \
+-disk '/oraclenfs/asm-clu-121-NDATA-disk2' \
+-disk '/oraclenfs/asm-clu-121-NDATA-disk3'"
 
-docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd mkdg '\
   <dg name=\"NDATA\" redundancy=\"external\"> \
   <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk1\"/> \
   <dsk string=\"/oraclenfs/asm-clu-121-NDATA-disk2\"/> \
@@ -452,7 +467,7 @@ docker exec rac1 su - grid -c "ORACLE_SID=+ASM1 /u01/app/12.1.0/grid/bin/asmcmd 
 </dg>'"
 ```   
 
-Confirm the resources are running.
+Confirm the clusterware resources are running.
 ```
 docker exec rac1 /u01/app/12.1.0/grid/bin/crsctl status resource -t
 ```
