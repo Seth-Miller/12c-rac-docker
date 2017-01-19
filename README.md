@@ -151,40 +151,38 @@ docker network connect --ip 10.10.10.12 pub nfs
 ```
 
 
-# RAC Node
+## RAC Node
 The RAC node container will be used for the grid infrastructure and database software. This process can be duplicated to create as many nodes as you want in your cluster.
 
-Create the RAC node image.
+Create a custom service and a scripts directory.
 ```
-docker build --tag giready Dockerfile-racnode
+sudo mkdir -p /srv/docker/rac_nodes/custom_services
+sudo mkdir -p /srv/docker/scripts
+
+sudo chmod 777 /srv/docker/rac_nodes/custom_services
+sudo chmod 777 /srv/docker/scripts
 ```
 
-Create the RAC node container. The `/oracledata/stage` directory holds the Oracle installation files. The `/sys/fs/cgroup` directory is necessary for systemd to run in the containers. The grid installation will fail without at least 1.5GB of shared memory.
+Copy the dhclient and network scripts from the repository to the custom service and scripts directories respectively.
+```
+cp dhclient-rac1-eth-pub.service /srv/docker/rac_nodes/custom_services/
+cp dhclient-rac1-eth-priv.service /srv/docker/rac_nodes/custom_services/
+
+cp networks-rac1.sh /srv/docker/scripts/
+```
+
+Create the RAC node container. The `/srv/docker/rac_nodes/custom_services` directory holds configuration files shared among all of the RAC node containers. The `/oracledata/stage` directory holds the Oracle installation files. The `/sys/fs/cgroup` directory is necessary for systemd to run in the containers. The grid installation will fail without at least 1.5GB of shared memory.
 ```
 docker run \
 --detach \
 --privileged \
 --name rac1 \
 --hostname rac1 \
+--volume /srv/docker/rac_nodes/custom_services:/usr/lib/custom_services \
 --volume /oracledata/stage:/stage \
 --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
---dns 10.10.10.10 \
 --shm-size 2048m \
-giready \
-/usr/lib/systemd/systemd --system --unit=multi-user.target
-```
-
-Alternatively, pull the RAC node image that has already been built.
-```
-docker run \
---detach \
---privileged \
---name rac1 \
---hostname rac1 \
---volume /oracledata/stage:/stage \
---volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
 --dns 10.10.10.10 \
---shm-size 2048m \
 sethmiller/giready \
 /usr/lib/systemd/systemd --system --unit=multi-user.target
 ```
@@ -193,31 +191,31 @@ Add the two custom networks to the RAC node container. I initially tried to use 
 
 Unlike the native docker network functions, the virtual adapters are not deleted automatically when the container is removed. There can be consequences if you are recreating your RAC containers over and over again without deleting the virtual adapters so the `ip link delete` commands were added to the scripts to delete any previously existing virtual adapters before creating the new ones needed by the RAC node container.
 ```
-sudo ./networks-rac1.sh
+sudo /srv/docker/scripts/networks-rac1.sh
 ```
 
-Start dhclient for each of the newly added networks. The IPs will come from the dhcpd container which will update the bind container.
+Copy the udev configuration file from the repository for the ASM disks into the custom services directory.
 ```
-docker exec rac1 dhclient -H rac1 -pf /var/run/dhclient-eth1.pid eth1
-docker exec rac1 dhclient -H rac1-priv -pf /var/run/dhclient-eth2.pid eth2
+cp 99-asm-disks.rules /srv/docker/rac_nodes/custom_services/
 ```
 
-Copy the udev configuration file for the ASM disks into the RAC node container.
+Link the udev configuration file to the udev rules.d directory in the RAC node container.
 ```
-docker cp 99-asm-disks.rules rac1:/etc/udev/rules.d/
+docker exec rac1 ln -s /usr/lib/custom_services/99-asm-disk.rules  /etc/udev/rules.d/
 ```
 
 Tell udev to read the new rules configuration.
 ```
+docker exec rac1 udevadm control --reload-rules
 docker exec rac1 udevadm trigger
 ```
 
 Now my ASM disk devices look like this in the RAC node container.
 ```
 $ docker exec rac1 ls -l /dev/sd[d-f]
-brw-rw----. 1 root oinstall 8, 48 Oct 17 16:49 /dev/sdd
-brw-rw----. 1 root oinstall 8, 64 Oct 17 16:49 /dev/sde
-brw-rw----. 1 root oinstall 8, 80 Oct 17 16:49 /dev/sdf
+brw-rw----. 1 grid asmadmin 8, 48 Oct 17 16:49 /dev/sdd
+brw-rw----. 1 grid asmadmin 8, 64 Oct 17 16:49 /dev/sde
+brw-rw----. 1 grid asmadmin 8, 80 Oct 17 16:49 /dev/sdf
 $ docker exec rac1 ls -ld /dev/asmdisks/
 drwxr-xr-x. 2 root root 100 Oct 17 16:49 /dev/asmdisks/
 $ docker exec rac1 ls -l /dev/asmdisks/
