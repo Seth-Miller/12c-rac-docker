@@ -338,6 +338,9 @@ installation_files:
       - "oracle.install.db.DBA_GROUP={{ operating_system.database.groups |
            selectattr('title', 'equalto', 'osdba') |
            map(attribute='name') | first }}"
+      - "oracle.install.db.OPER_GROUP={{ operating_system.database.groups |
+           selectattr('title', 'equalto', 'osoper') |
+           map(attribute='name') | first }}"
       - "oracle.install.db.BACKUPDBA_GROUP={{ operating_system.database.groups |
            selectattr('title', 'equalto', 'osbackupdba') |
            map(attribute='name') | first }}"
