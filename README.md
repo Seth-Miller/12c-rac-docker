@@ -37,7 +37,7 @@ sudo chmod g+w /oraclenfs/asm*
 ```
 
 
-# Networks
+## Networks
 
 The BIND, DHCPD, and RAC containers communicate over a 10.10.10.0/24 network. This is known within the cluster as the public network.
 
@@ -54,53 +54,23 @@ docker network create --subnet=11.11.11.0/24 priv
 ```
 
 
-# BIND
+## BIND
 The BIND container will be used for DNS for the cluster.
 
-Create the BIND image.
+Create the BIND container. Unless you need it, disable the administration GUI `--env WEBMIN_ENABLED=false`. The `-4` option prevents the named/bind process from listening on the IPV6 networks.
 ```
-docker build --tag bind Dockerfile-bind
-```
-
-Create the BIND container but don't start it until the step following this one is complete. Unless you need it, leave the WEBMIN disabled. The `-4` option prevents named from listening on the IPV6 addresses.
-```
-docker create \
---interactive \
---tty \
+docker run \
+--detach \
 --name bind \
 --hostname bind \
---publish 53:53/tcp \
---publish 53:53/udp \
---volume /srv/docker/bind:/data \
---env WEBMIN_ENABLED=false \
-bind \
--4
-```
-
-Alternatively, pull the bind image that has already been built.
-```
-docker create \
---interactive \
---tty \
---name bind \
---hostname bind \
+--network pub \
+--ip 10.10.10.10 \
 --publish 53:53/tcp \
 --publish 53:53/udp \
 --volume /srv/docker/bind:/data \
 --env WEBMIN_ENABLED=false \
 sethmiller/bind \
 -4
-```
-
-Connect the 10.10.10.0/24 network to the BIND container.
-```
-docker network connect --ip 10.10.10.10 pub bind
-```
-
-Start the BIND container.
-```
-docker start bind
-docker restart bind
 ```
 
 
