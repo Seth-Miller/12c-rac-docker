@@ -1,1 +1,2 @@
- * Check for the existence of the disk devices early.
+* Check for the existence of the disk devices early.
+* Make the add_database role generic for any database by using a variable.
