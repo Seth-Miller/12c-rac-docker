@@ -221,6 +221,7 @@
         - "{{ installation_files | selectattr('type', 'equalto', 'bundle') | map(attribute='patch_numbers') | first }}"
       tags:
         - apply_bundle_patch_to_grid
+        - apply_patch
 
 
     - name: Cleanup .opatch_storage in grid infrastructure home
@@ -240,6 +241,7 @@
                }}/.patch_storage/ -mindepth 1 -type d -exec rm -rf {} +"
       tags:
         - cleanup_opatch_storage_for_grid
+        - apply_patch
 
 
     - name: Apply bundle patch to database
@@ -272,6 +274,7 @@
         - "{{ installation_files | selectattr('type', 'equalto', 'bundle') | map(attribute='patch_numbers') | first }}"
       tags:
         - apply_bundle_patch_to_database
+        - apply_patch
 
 
 ##########################################################################################
@@ -308,6 +311,7 @@
         - "{{ installation_files | selectattr('type', 'equalto', 'oneoff') | map(attribute='patch_numbers') | first }}"
       tags:
         - apply_oneoff_patches_to_database
+        - apply_patch
 
 
     - name: Cleanup .opatch_storage in database home
@@ -327,6 +331,7 @@
                }}/.patch_storage/ -mindepth 1 -type d -exec rm -rf {} +"
       tags:
         - cleanup_opatch_storage_for_database
+        - apply_patch
 
 
 ##########################################################################################
