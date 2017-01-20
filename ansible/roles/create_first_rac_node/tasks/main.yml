@@ -194,4 +194,4 @@
                && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on
                && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
       tags:
-        - relink_database_binaries_for_rac
+        - relink_for_rac
