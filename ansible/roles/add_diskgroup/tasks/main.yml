@@ -13,8 +13,7 @@
                {{
                  operating_system.grid_infrastructure.users |
                  selectattr('title', 'equalto', 'owner') |
-                 map(attribute='name') |
-                 first
+                 map(attribute='name') | first
                }} -c "ORACLE_SID=+ASM1
                {{
                  oracle_binaries |
