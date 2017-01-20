@@ -12,7 +12,7 @@ The passwords for the non-privileged user accounts are all set to `oracle_4U`.
 This project was built using CoreOS. See the [COREOS.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/COREOS.md) file for instructions on how to use CoreOS for this project.
 
 ### Ansible
-This project has been automated using Ansible. Instructions for using Ansible can be found in [Ansible.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ANSIBLE.md). If you want to go through the manual process, proceed with this document.
+This project has been automated using Ansible. Instructions for using Ansible can be found in [ANSIBLE.md] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ANSIBLE.md). If you want to go through the manual process, proceed with this document.
 
 
 ## Oracle installation files
