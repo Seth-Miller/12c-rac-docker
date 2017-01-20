@@ -177,6 +177,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
         - copy_dhcpd_config_file
+        - config_files
 
 
     - name: Copy NFS container configuration file
@@ -188,6 +189,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
       tags:
         - copy_nfs_config_file
+        - config_files
 
 
 ##########################################################################################
@@ -217,6 +219,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'bind') | list }}"
       tags:
         - create_bind_container
+        - create_container
 
 
     - name: Create DHCPD container
@@ -240,6 +243,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'dhcpd') | list }}"
       tags:
         - create_dhcpd_container
+        - create_container
 
 
     - name: Create NFS container
@@ -262,6 +266,7 @@
         - "{{ docker.containers | selectattr('name', 'equalto', 'nfs') | list }}"
       tags:
         - create_nfs_container
+        - create_container
  
 
 ##########################################################################################
