@@ -7,7 +7,7 @@ If you're running CoreOS for your Docker host, some setup is required before pro
 
 
 ## Ansible
-Everything required for Ansible to work is in the [ansible] (https://github.com/Seth-Miller/12c-rac-docker/tree/master/ansible) subfolder in this repository. Throughout these instructions it is assumed you are working from the ansible directory.
+All of the ansible scripts are in the [ansible] (https://github.com/Seth-Miller/12c-rac-docker/tree/master/ansible) directory in this repository. Throughout these instructions it is assumed you are working from the ansible directory.
 
 Besides the instructions found here, the yaml files are heavily commented with information and examples.
 
@@ -19,6 +19,29 @@ The variables for all of the roles are contained in the [roles/common/vars] (htt
 
 There is a second file called [files.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/roles/common/vars/files.yml) that is referenced for the file locations of the grid infrastructure and database installation files. This file was left intentionally blank so you can fill out the locations for these files based on your environment.
 
+It is important that all of the playbooks reference the common role as well as the files.yml file.
+```
+vars_files:
+  - roles/common/vars/files.yml
+roles:
+  - common
+```
+
 
 ## Prepare the Docker host
-The `prepare_host.yml` file starts the prepare_host role. These tasks not only prepare the Docker host, they also build the containers that support the Oracle RAC cluster, including the DNS/BIND, DHCPD, and NFS server containers.
+The [prepare_host.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/prepare_host.yml) file starts the prepare_host role. These tasks not only prepare the Docker host, they also build the containers that support the Oracle RAC cluster, including the DNS/BIND, DHCPD, and NFS server containers.
+
+Run the prepare_host playbook.
+```
+ansible-playbook prepare_host.yml
+```
+
+Tags can be used to limit which tasks are executed in each playbook. If you want to only prepare the ASM file and block devices, add the `asm` tag.
+```
+ansible-playbook prepare_host.yml --tags=asm
+```
+
+Here is a list of tags and their descriptions for the prepare_host tasks.
+| Tag           | Description                            |
+| ------------- |----------------------------------------|
+| asm           | Manage the ASM block and file devices  |
