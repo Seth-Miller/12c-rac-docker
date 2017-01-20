@@ -1,20 +1,39 @@
 
     - block:
         - name: Create database
+          # docker exec rac1 su - oracle -c "/u01/app/oracle/product/12.1.0/dbhome_1/bin/dbca \
+          #   -createDatabase -silent \
+          #   -templateName General_Purpose.dbc \
+          #   -gdbName orcl \
+          #   -sysPassword oracle_4U \
+          #   -systemPassword oracle_4U \
+          #   -storageType ASM \
+          #   -diskGroupName DATA \
+          #   -recoveryGroupName DATA \
+          #   -characterSet AL32UTF8 \
+          #   -nationalCharacterSet UTF8 \
+          #   -totalMemory 1024 \
+          #   -emConfiguration none \
+          #   -nodelist rac1,rac2 \
+          #   -createAsContainerDatabase True'
           command: >
-                 /usr/bin/docker exec {{ first_rac_node }} su -
-                 {{
-                   operating_system.database.users |
-                   selectattr('title', 'equalto', 'owner') |
-                   map(attribute='name') |
-                   first
-                 }} -c "/u01/app/oracle/product/12.1.0/dbhome_1/bin/dbca
-                 {{
-                   databases |
-                   selectattr('version', 'equalto', '12.1.0.2') |
-                   map(attribute='parameters') |
-                   first | join(' ')
-                 }}"
+                   /usr/bin/docker exec {{ first_rac_node }} su -
+                   {{
+                     operating_system.database.users |
+                     selectattr('title', 'equalto', 'owner') |
+                     map(attribute='name') | first
+                   }} -c "{{
+                     oracle_binaries |
+                     selectattr('type', 'equalto', 'database') |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='oracle_home') | first
+                   }}/bin/dbca
+                   {{
+                     databases |
+                     selectattr('version', 'equalto', '12.1.0.2') |
+                     map(attribute='parameters') |
+                     first | join(' ')
+                   }}"
           register: create_database_result
           changed_when: (create_database_result.rc == 0 ) or (create_database_result.rc == 6 )
           failed_when: (create_database_result.rc != 0) and (create_database_result.rc != 6 )
