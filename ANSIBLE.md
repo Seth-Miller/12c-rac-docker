@@ -42,6 +42,7 @@ ansible-playbook prepare_host.yml --tags=asm
 ```
 
 Here is a list of tags and their descriptions for the prepare_host tasks.
+
 Tag           | Description
 ------------- | --------------------------------------
 asm | Manage the ASM block and file devices
