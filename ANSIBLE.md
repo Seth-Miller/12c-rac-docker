@@ -73,6 +73,8 @@ commit_rac1 | Commits the prepared RAC node container to the giinstalled image
 ## Create the first RAC node container
 The [create_first_rac_node.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/create_first_rac_node.yml) file starts the create_first_rac_node role. These tasks create the first RAC node container (rac1) from the giinstalled image created in the previous step. These tasks configure the grid infrastructure for a cluster and start the cluster processes. It also relinks the `oracle` executable for RAC.
 
+Here is a list of tags and their descriptions for the create_first_rac_node tasks.
+
 Tag           | Description
 ------------- | --------------------------------------
 create_rac1_container | Creates the rac1 container
@@ -80,3 +82,18 @@ configure_grid | Configures the grid infrastructure for the cluster
 configure_grid_root | Executes the grid infrastructure root scripts that start the cluster processes
 configure_grid_tools | Finishes configuring the grid infrastructure
 relink_for_rac | Relinks the oracle executable for RAC
+
+
+## Create the second RAC node container
+The [create_second_rac_node.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/create_second_rac_node.yml) file starts the add_rac_nodes role, setting the `this_rac_node` variable to rac2. These tasks create the second RAC node container (rac2) from the giinstalled image. These tasks differ from the first RAC node container creation in that they add the rac2 container to the existing cluster running on rac1. It also relinks the `oracle` executable for RAC.
+
+Here is a list of tags and their descriptions for the add_rac_nodes tasks.
+
+Tag           | Description
+------------- | --------------------------------------
+create_additional_container | Creates the rac2 container
+add_new_node_to_cluster | Runs addnode.sh on rac1 to add rac2 to the existing cluster
+add_new_node_root | Executes the grid infrastructure root scripts that starts the cluster processes
+relink_for_rac | Relinks the oracle executable for RAC
+
+
