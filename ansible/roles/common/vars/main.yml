@@ -70,6 +70,9 @@ operating_system:
       - name: kmdba
         title: oskmdba
         gid: 54326
+      - name: racdba
+        title: osracdba
+        gid: 54327
 
 
 oracle_binaries:
