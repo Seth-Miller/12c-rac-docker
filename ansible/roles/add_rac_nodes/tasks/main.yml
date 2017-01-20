@@ -80,7 +80,7 @@
                      map(attribute='oracle_home') | first
                    }}/root.sh
       tags:
-        - configure_grid_add_node_root
+        - add_new_node_root
 
     - name: Relink database binaries for RAC
       # the database binaries are installed when there is only one node so they are not enabled for RAC,
@@ -104,4 +104,4 @@
                && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk rac_on
                && make -f $ORACLE_HOME/rdbms/lib/ins_rdbms.mk ioracle"
       tags:
-        - relink_database_binaries_for_rac
+        - relink_for_rac
