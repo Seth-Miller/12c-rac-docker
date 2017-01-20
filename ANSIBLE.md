@@ -46,3 +46,8 @@ Here is a list of tags and their descriptions for the prepare_host tasks.
 Tag           | Description
 ------------- | --------------------------------------
 asm | Manage the ASM block and file devices
+create_docker_networks | Creates public and private Docker networks
+create_directory | Creates directories for container configuration files
+config_files | Copies config files to DHCPD and NFS containers
+create_container | Creates the BIND, DHCPD, and NFS containers
+installation_files | Downloads and unzips the Oracle installation files
