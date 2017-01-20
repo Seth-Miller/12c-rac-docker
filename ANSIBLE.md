@@ -51,3 +51,20 @@ create_directory | Creates directories for container configuration files
 config_files | Copies config files to DHCPD and NFS containers
 create_container | Creates the BIND, DHCPD, and NFS containers
 installation_files | Downloads and unzips the Oracle installation files
+
+
+## Create the RAC node image
+The [create_oracle_image.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/create_oracle_image.yml) file starts the create_oracle_image role. These tasks create the RAC node image which will be used by all RAC node containers. The image preparation consists of installing the grid infrastructure software, the database software, and patches for both. The image will be committed locally on the Docker host and called `giinstalled`.
+
+Once the image has been created, it will not need to change until new binaries or new patches need to be applied.
+
+Here is a list of tags and their descriptions for the create_oracle_image tasks.
+
+Tag           | Description
+------------- | --------------------------------------
+create_rac1_container | Creates the rac1 container
+install_grid | Installs the grid infrastructure binaries
+install_database | Installs the database binaries
+opatch | Updates opatch in both grid infrastructure and database homes
+apply_patch | Applies the bundle and one-off patches to the grid infrastructure and database homes
+commit_rac1 | Commits the prepared RAC node container to the giinstalled image
