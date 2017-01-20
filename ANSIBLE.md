@@ -68,3 +68,15 @@ install_database | Installs the database binaries
 opatch | Updates opatch in both grid infrastructure and database homes
 apply_patch | Applies the bundle and one-off patches to the grid infrastructure and database homes
 commit_rac1 | Commits the prepared RAC node container to the giinstalled image
+
+
+## Create the first RAC node container
+The [create_first_rac_node.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/create_first_rac_node.yml) file starts the create_first_rac_node role. These tasks create the first RAC node container (rac1) from the giinstalled image created in the previous step. These tasks configure the grid infrastructure for a cluster and start the cluster processes. It also relinks the `oracle` executable for RAC.
+
+Tag           | Description
+------------- | --------------------------------------
+create_rac1_container | Creates the rac1 container
+configure_grid | Configures the grid infrastructure for the cluster
+configure_grid_root | Executes the grid infrastructure root scripts that start the cluster processes
+configure_grid_tools | Finishes configuring the grid infrastructure
+relink_for_rac | Relinks the oracle executable for RAC
