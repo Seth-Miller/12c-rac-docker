@@ -97,3 +97,21 @@ add_new_node_root | Executes the grid infrastructure root scripts that starts th
 relink_for_rac | Relinks the oracle executable for RAC
 
 
+## Add orcl RAC database
+The [add_database.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/add_database.yml) file starts the add_database role. These tasks create the orcl Oracle database in the cluster using the `dbca` utility.
+
+Here is a list of tags and their descriptions for the add_database tasks.
+
+Tag           | Description
+------------- | --------------------------------------
+create_database | Creates the orcl database
+
+
+## Add NDATA ASM disk group
+The [add_NDATA_diskgroup.yml] (https://github.com/Seth-Miller/12c-rac-docker/blob/master/ansible/add_NDATA_diskgroup.yml) file starts the add_diskgroup role, setting the `this_disk_group` variable to NDATA. These tasks create the NDATA ASM disk group.
+
+Here is a list of tags and their descriptions for the add_database tasks.
+
+Tag           | Description
+------------- | --------------------------------------
+create_disk_group | Creates the NDATA ASM disk group
