@@ -83,7 +83,7 @@ RUN echo "oracle:${ORACLE_PASSWORD}" | chpasswd
 
 # Add ulimits configuration file for grid user
 # oracle user ulimits configuration file already added by oracle-rdbms-server-12cR1-preinstall
-ADD ["grid_security_limits.conf", "/etc/security/limits.conf.d/"]
+ADD ["grid_security_limits.conf", "/etc/security/limits.d/"]
 
 
 ###################################################################################
