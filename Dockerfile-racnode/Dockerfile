@@ -62,6 +62,7 @@ RUN ["groupadd", "--gid", "54323", "oper"]
 RUN ["groupadd", "--gid", "54324", "backupdba"]
 RUN ["groupadd", "--gid", "54325", "dgdba"]
 RUN ["groupadd", "--gid", "54326", "kmdba"]
+RUN ["groupadd", "--gid", "54327", "racdba"]
 
 
 # Add grid infrastructure owner
@@ -71,9 +72,9 @@ RUN ["usermod", "--uid", "54421", "--gid", "oinstall", "--groups", "dba,asmdba,a
 
 
 # Add database owner
-RUN useradd --create-home --uid 54321 --gid oinstall --groups dba,asmdba,oper,backupdba,dgdba,kmdba oracle || \
+RUN useradd --create-home --uid 54321 --gid oinstall --groups dba,asmdba,oper,backupdba,dgdba,kmdba,racdba oracle || \
     (RES=$? && ( [ $RES -eq 9 ] && exit 0 || exit $RES))
-RUN ["usermod", "--uid", "54321", "--gid", "oinstall", "--groups", "dba,asmdba,oper,backupdba,dgdba,kmdba", "oracle"]
+RUN ["usermod", "--uid", "54321", "--gid", "oinstall", "--groups", "dba,asmdba,oper,backupdba,dgdba,kmdba,racdba", "oracle"]
 
 
 # Give grid and oracle users passwords
