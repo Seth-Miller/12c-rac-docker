@@ -1,4 +1,4 @@
-FROM sameersbn/bind:latest
+FROM sethmiller/bind:latest
 MAINTAINER sethmiller.sm@gmail.com
 
 
