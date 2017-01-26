@@ -21,6 +21,8 @@ coreos:
   units:
     - name: etcd2.service
       command: start
+      
+    - name: etcd2.service  
       drop-ins:
         - name: 10-cloudinit.conf
           content: |
