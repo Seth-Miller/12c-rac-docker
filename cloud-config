@@ -11,7 +11,22 @@ ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3ckcUy+ysoytNKdqdyVUCp3TVQlfrVZwlLWWY10t43qrCo+3+8Ccd/Or7HPERUyKQu7fW+Cd8J766ckdcZPSn6Fk6PFf87jHsVqcin5mmhF3T74oFlEg4b++ieKcNKjFH9DopvclzIA07AuZMfbNe1tumak+O2FMkelkHTsUQ7QiJ/etYPmJ+FpD9KnTiHm6eF5wmrobxuavOLIhP9JvlzM6E3uNV+B6S7geqH9wRxEDBVLUQVnZQAtiZlk8RUmJsMHfHBx4Vg3Uqs8/pCPf1tJPOqkIsxzvGHn+wB9ypsvY190aAW1CvAIHM5fL82seKfpPHo9078qDz32mZ7wQn Seth.Miller@W259997OFEQ5C
 
 coreos:
+  etcd2:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=2
+    # specify the initial size of your cluster with ?size=X
+    discovery: https://discovery.etcd.io/95ea619382b791a05217ea90370c4f84
+    advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001
+    initial-advertise-peer-urls: http://$private_ipv4:2380
+    # listen on both the official ports and the legacy ports
+    # legacy ports can be omitted if your application doesn't depend on them
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://$private_ipv4:2380
+
   units:
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
 
 # Creates an LVM thinpool for Docker storage, will only run if the logical volume does not exist
 # Change /dev/sdb to the disk you want to use for Docker storage
@@ -70,49 +85,6 @@ coreos:
         Type=oneshot
         ExecStart=/usr/sbin/lvcreate -y -n oracledata data -l 30%VG
         ExecStart=/usr/sbin/mkfs.ext4 /dev/mapper/data-oracledata
-
-
-# Mounts the file system for storing installation files from previous unit
-    - name: oracledata.mount
-      command: start
-      content: |
-        [Unit]
-        Description=Mount oracledata volume to /oracledata
-        Requires=dev-mapper-data\x2doracledata.device
-        After=dev-mapper-data\x2doracledata.device
-        [Mount]
-        What=/dev/mapper/data-oracledata
-        Where=/oracledata
-        Type=ext4
-
-
-# Creates a new LVM volume and file system for using NFS files for an ASM disk group, will only run if the logical volume does not exist
-    - name: create-oraclenfs-volume.service
-      command: start
-      content: |
-        [Unit]
-        Description=Create oraclenfs logical volume and create an ext4 filesystem
-        After=create-data-volume-group.service
-        Requires=create-data-volume-group.service
-        ConditionPathExists=!/dev/mapper/data-oraclenfs
-        [Service]
-        Type=oneshot
-        ExecStart=/usr/sbin/lvcreate -y -n oraclenfs data -l 30%VG
-        ExecStart=/usr/sbin/mkfs.ext4 /dev/mapper/data-oraclenfs
-
-
-# Mounts the file system for using NFS files for an ASM disk group from previous unit
-    - name: oraclenfs.mount
-      command: start
-      content: |
-        [Unit]
-        Description=Mount oraclenfs volume to /oraclenfs
-        Requires=dev-mapper-data\x2doraclenfs.device
-        After=dev-mapper-data\x2doraclenfs.device
-        [Mount]
-        What=/dev/mapper/data-oraclenfs
-        Where=/oraclenfs
-        Type=ext4
 
 
 write_files:
