@@ -21,8 +21,10 @@ coreos:
   units:
     - name: etcd2.service
       command: start
-      content: |
-        ExecStartPre=/etc/replace_MYIP.sh
+      drop-ins:
+        - name: 10-cloudinit.conf
+          content: |
+            ExecStartPre=/etc/replace_MYIP.sh
         
     - name: fleet.service
       command: start
