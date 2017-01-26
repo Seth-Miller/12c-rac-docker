@@ -11,16 +11,19 @@ coreos:
     # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=2
     # specify the initial size of your cluster with ?size=X
     discovery: https://discovery.etcd.io/36fb1dff80eb51a60d044f30ee3ec3e1
-    advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001
-    initial-advertise-peer-urls: http://$private_ipv4:2380
+    advertise-client-urls: http://MYIP:2379,http://MYIP:4001
+    initial-advertise-peer-urls: http://MYIP:2380
     # listen on both the official ports and the legacy ports
     # legacy ports can be omitted if your application doesn't depend on them
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://$private_ipv4:2380
+    listen-peer-urls: http://MYIP:2380
 
   units:
     - name: etcd2.service
       command: start
+      content: |
+        ExecStartPre=/etc/replace_MYIP.sh
+        
     - name: fleet.service
       command: start
 
@@ -104,7 +107,15 @@ write_files:
           thin_pool_autoextend_threshold=80
           thin_pool_autoextend_percent=20
       }
-
+      
+# Required to replace 'MYIP' with IP address of server in etcd2 service environment file
+  - path: /etc/replace_MYIP.sh
+    owner: root
+    content: |
+      sed -i 's/MYIP/'
+      $(ip -o -f inet addr show dev ens192 | awk '{print $4}' | awk -F'/' '{print $1}')
+      '/g'
+      /run/systemd/system/etcd2.service.d/20-cloudinit.conf
 
 # Add bash profile preferences
   - path: /etc/profile.env
