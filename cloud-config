@@ -26,6 +26,7 @@ coreos:
       drop-ins:
         - name: 10-cloudinit.conf
           content: |
+            [Service]
             ExecStartPre=/etc/replace_MYIP.sh
         
     - name: fleet.service
