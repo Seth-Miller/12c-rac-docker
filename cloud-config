@@ -20,7 +20,12 @@ coreos:
 
   units:
     - name: etcd2.service  
-      command: start
+      drop-ins:
+        - name: 50.replace_ip.conf
+          content: |
+            [Service]
+            ExecPreStart=/etc/replace_MYIP.sh
+          command: start
         
     - name: fleet.service
       command: start
