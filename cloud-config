@@ -26,7 +26,6 @@ coreos:
       content: |
         [Match]
         Name=ens192
-
         [Network]
         Address=10.0.0.101/24
         
