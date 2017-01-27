@@ -20,11 +20,6 @@ coreos:
 
   units:
     - name: etcd2.service  
-      #drop-ins:
-      #  - name: 50-replace-ip.conf
-      #    content: |
-      #      [Service]
-      #      ExecStartPre=/etc/replace_MYIP.sh
       command: start
         
     - name: fleet.service
@@ -115,10 +110,7 @@ write_files:
   - path: /etc/replace_MYIP.sh
     owner: root
     content: |
-      sed -i 's/MYIP/'
-      $(ip -o -f inet addr show dev ens192 | awk '{print $4}' | awk -F'/' '{print $1}')
-      '/g'
-      /run/systemd/system/etcd2.service.d/20-cloudinit.conf
+      sed -i 's/MYIP/'$(ip -o -f inet addr show dev ens192 | awk '{print $4}' | awk -F'/' '{print $1}')'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
 
 # Add bash profile preferences
   - path: /etc/profile.env
