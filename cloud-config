@@ -32,6 +32,7 @@ coreos:
         [Service]
         Type=oneshot
         ExecStart=/bin/sh /etc/replace_MYIP.sh
+        ExecStartPost=/usr/bin/systemctl daemon-reload
 
 # Creates an LVM thinpool for Docker storage, will only run if the logical volume does not exist
 # Change /dev/sdb to the disk you want to use for Docker storage
