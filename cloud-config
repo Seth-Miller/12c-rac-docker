@@ -19,15 +19,13 @@ coreos:
     listen-peer-urls: http://MYIP:2380
 
   units:
-    - name: etcd2.service
-      command: start
-      
     - name: etcd2.service  
       drop-ins:
-        - name: 10-cloudinit.conf
+        - name: 50-replace-ip.conf
           content: |
             [Service]
             ExecStartPre=/etc/replace_MYIP.sh
+      command: start
         
     - name: fleet.service
       command: start
