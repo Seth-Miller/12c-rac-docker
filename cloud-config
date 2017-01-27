@@ -28,9 +28,9 @@ coreos:
       command: start
       content: |
         [Unit]
-        Type=oneshot
         Before=etcd2.service
         [Service]
+        Type=oneshot
         ExecStart=/etc/replace_MYIP.sh
 
 # Creates an LVM thinpool for Docker storage, will only run if the logical volume does not exist
