@@ -24,7 +24,7 @@ coreos:
         - name: 50-replace_ip.conf
           content: |
             [Service]
-            ExecPreStart=/etc/replace_MYIP.sh
+            ExecStartPre=/usr/bin/sed -i 's/MYIP/'$(/usr/bin/ip -o -f inet addr show dev ens192 | /usr/bin/awk '{print $4}' | /usr/bin/awk -F'/' '{print $1}')'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
           command: start
         
     - name: fleet.service
