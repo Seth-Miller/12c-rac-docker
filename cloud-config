@@ -10,7 +10,7 @@ coreos:
   etcd2:
     # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=2
     # specify the initial size of your cluster with ?size=X
-    discovery: https://discovery.etcd.io/d2cde2469ab6ec324b9f5e43e50cb7d2
+    discovery: https://discovery.etcd.io/2e933ddef3fed66209971fac1fa503b2
     name: MYNAME
     # initial-cluster: kube-a=http://MYIP:2380
     advertise-client-urls: http://MYIP:2379,http://MYIP:4001
