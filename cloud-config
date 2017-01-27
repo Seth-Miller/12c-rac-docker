@@ -21,7 +21,7 @@ coreos:
   units:
     - name: etcd2.service  
       drop-ins:
-        - name: 50.replace_ip.conf
+        - name: 50-replace_ip.conf
           content: |
             [Service]
             ExecPreStart=/etc/replace_MYIP.sh
