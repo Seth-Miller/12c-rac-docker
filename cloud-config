@@ -25,7 +25,7 @@ coreos:
           content: |
             [Service]
             ExecStartPre=/usr/bin/sed -i 's/MYIP/'$(/usr/bin/ip -o -f inet addr show dev ens192 | /usr/bin/awk '{print $4}' | /usr/bin/awk -F'/' '{print $1}')'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
-          command: start
+      command: start
         
     - name: fleet.service
       command: start
