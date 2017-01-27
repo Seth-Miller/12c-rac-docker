@@ -22,7 +22,7 @@ coreos:
 
   units:
     - name: 00-ens192.network
-      runtime: true
+      runtime: false
       content: |
         [Match]
         Name=ens192
