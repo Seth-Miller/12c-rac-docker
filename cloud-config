@@ -1,6 +1,10 @@
 #cloud-config
 
 
+# Hostname of your CoreOS VM
+hostname: kube-a
+
+
 # Stores the public key for SSH shared-key authentication, update with your SSH RSA public key
 ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA4giEY9NfIhEd16jBxAYSDAx+Drc0bV09rYaIyitUNrbpKVQ0Nm2yYn3VgKrPZnUEcNgtLTD1nB68QzfIJfWgQhv0V+z/EhnNDoAkxvFrW1MNDBzgrtHJEKvkVacI7zEAA/TLkrvyyVDjC3ETtA2Pye6l2Lnq5gDrgcJ6Q8eOM3LroH5E8jXmCSQI4xJuILl9M/glBapzJb/R85O02v9KpBOQJSrGmSKnWzxWaNvjnBvylkUZ8vd6i7yuby4RwhBgohgF9FP0MUHT/bqx8lVZUjiqNZUtsaxdH5SsEdMlMXKcLw/Q5d9VEMDFWxESKc0h8mT6INCVLFlGqJicijQylw==
