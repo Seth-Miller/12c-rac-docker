@@ -31,7 +31,7 @@ coreos:
         Type=oneshot
         Before=etcd2.service
         [Service]
-        ExecStartPre=/usr/bin/sed -i 's/MYIP/'$(/usr/bin/ip -o -f inet addr show dev ens192 | /usr/bin/awk '{print $4}' | /usr/bin/awk -F'/' '{print $1}')'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
+        ExecStart=/usr/bin/sed -i 's/MYIP/'$(/usr/bin/ip -o -f inet addr show dev ens192 | /usr/bin/awk '{print $4}' | /usr/bin/awk -F'/' '{print $1}')'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
 
 # Creates an LVM thinpool for Docker storage, will only run if the logical volume does not exist
 # Change /dev/sdb to the disk you want to use for Docker storage
