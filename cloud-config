@@ -1,10 +1,6 @@
 #cloud-config
 
 
-# Hostname of your CoreOS VM
-hostname: kube-a
-
-
 # Stores the public key for SSH shared-key authentication, update with your SSH RSA public key
 ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA4giEY9NfIhEd16jBxAYSDAx+Drc0bV09rYaIyitUNrbpKVQ0Nm2yYn3VgKrPZnUEcNgtLTD1nB68QzfIJfWgQhv0V+z/EhnNDoAkxvFrW1MNDBzgrtHJEKvkVacI7zEAA/TLkrvyyVDjC3ETtA2Pye6l2Lnq5gDrgcJ6Q8eOM3LroH5E8jXmCSQI4xJuILl9M/glBapzJb/R85O02v9KpBOQJSrGmSKnWzxWaNvjnBvylkUZ8vd6i7yuby4RwhBgohgF9FP0MUHT/bqx8lVZUjiqNZUtsaxdH5SsEdMlMXKcLw/Q5d9VEMDFWxESKc0h8mT6INCVLFlGqJicijQylw==
@@ -14,9 +10,9 @@ coreos:
   etcd2:
     # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=2
     # specify the initial size of your cluster with ?size=X
-    # discovery: https://discovery.etcd.io/dcc0c508f94327407c1f94b0eb391dbc
-    name: kube-a
-    initial-cluster: kube-a=http://MYIP:2380
+    discovery: https://discovery.etcd.io/d2cde2469ab6ec324b9f5e43e50cb7d2
+    name: MYNAME
+    # initial-cluster: kube-a=http://MYIP:2380
     advertise-client-urls: http://MYIP:2379,http://MYIP:4001
     initial-advertise-peer-urls: http://MYIP:2380
     # listen on both the official ports and the legacy ports
@@ -126,6 +122,7 @@ write_files:
     owner: root
     content: |
       sed -i 's/MYIP/'$(ip -o -f inet addr show dev ens192 | awk '{print $4}' | awk -F'/' '{print $1}')'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
+      sed -i 's/MYNAME/'$(hostnamectl --static status)'/g' /run/systemd/system/etcd2.service.d/20-cloudinit.conf
 
 # Add bash profile preferences
   - path: /etc/profile.env
