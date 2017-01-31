@@ -1,0 +1,107 @@
+{
+  "ignition": {
+    "version": "2.0.0",
+    "config": {}
+  },
+  "storage": {
+    "files": [
+      {
+        "filesystem": "root",
+        "path": "/etc/check_vg.sh",
+        "contents": {
+          "source": "data:,if%20!%20%24(%2Fusr%2Fsbin%2Fvgs%20%241%20%3E%2Fdev%2Fnull%202%3E%261)%3B%20then%0A%20%20%2Fusr%2Fsbin%2Fpvcreate%20%242%0A%20%20%2Fusr%2Fsbin%2Fvgcreate%20%241%20%242%0A%20%20%2Fusr%2Fsbin%2Fvgs%20%241%20%3E%2Fdev%2Fnull%202%3E%261%0Afi%0A",
+          "verification": {}
+        },
+        "user": {},
+        "group": {}
+      },
+      {
+        "filesystem": "root",
+        "path": "/etc/lvm/profile/docker-thinpool.profile",
+        "contents": {
+          "source": "data:,activation%20%7B%0A%20%20%20%20thin_pool_autoextend_threshold%3D80%0A%20%20%20%20thin_pool_autoextend_percent%3D20%0A%7D%0A",
+          "verification": {}
+        },
+        "mode": 420,
+        "user": {},
+        "group": {}
+      },
+      {
+        "filesystem": "root",
+        "path": "/etc/replace_MYIP.sh",
+        "contents": {
+          "source": "data:,sed%20-i%20's%2FMYIP%2F'%24(ip%20-o%20-f%20inet%20addr%20show%20dev%20ens192%20%7C%20awk%20'%7Bprint%20%244%7D'%20%7C%20awk%20-F'%2F'%20'%7Bprint%20%241%7D')'%2Fg'%20%2Frun%2Fsystemd%2Fsystem%2Fetcd2.service.d%2F20-cloudinit.conf%0Ased%20-i%20's%2FMYNAME%2F'%24(hostnamectl%20--static%20status)'%2Fg'%20%2Frun%2Fsystemd%2Fsystem%2Fetcd2.service.d%2F20-cloudinit.conf%0A",
+          "verification": {}
+        },
+        "user": {},
+        "group": {}
+      },
+      {
+        "filesystem": "root",
+        "path": "/etc/profile.env",
+        "contents": {
+          "source": "data:,alias%20ll%3D'ls%20-l%20--color%3Dauto'%0Aexport%20PATH%3D%24PATH%3A%2Fopt%2Fbin%0A",
+          "verification": {}
+        },
+        "user": {},
+        "group": {}
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "name": "fleet.service",
+        "enable": true
+      },
+      {
+        "name": "etcd2.service",
+        "enable": true,
+        "dropins": [
+          {
+            "name": "20-etcd2-envinit.conf",
+            "contents": "[Service]\nEnvironment=\"ETCD_ADVERTISE_CLIENT_URLS=http://10.81.22.22:2379,http://10.81.22.22:4001\"\nEnvironment=\"ETCD_DISCOVERY=https://discovery.etcd.io/f4041a6e31731f41aa2b0971b9340563\"\nEnvironment=\"ETCD_INITIAL_ADVERTISE_PEER_URLS=http://10.81.22.22:2380\"\nEnvironment=\"ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379,http://0.0.0.0:4001\"\nEnvironment=\"ETCD_LISTEN_PEER_URLS=http://10.81.22.22:2380\"\nEnvironment=\"ETCD_NAME=kube-a\"\n"
+          }
+        ]
+      },
+      {
+        "name": "create-docker-lvm-thinpool.service",
+        "enable": true,
+        "contents": "[Unit]\nAfter=lvm2-monitor.service\nRequires=lvm2-monitor.service\nConditionPathExists=!/dev/mapper/docker-thinpool\n[Service]\nType=oneshot\nExecStart=/usr/sbin/pvcreate /dev/sdb\nExecStart=/usr/sbin/vgcreate docker /dev/sdb\nExecStart=/usr/sbin/lvcreate --wipesignatures y -n thinpool docker -l 95%VG\nExecStart=/usr/sbin/lvcreate --wipesignatures y -n thinpoolmeta docker -l 1%VG\nExecStart=/usr/sbin/lvconvert -y --zero n -c 512K --thinpool docker/thinpool --poolmetadata docker/thinpoolmeta\nExecStart=/usr/sbin/lvchange --metadataprofile docker-thinpool docker/thinpool\n"
+      },
+      {
+        "name": "docker.service",
+        "dropins": [
+          {
+            "name": "10.docker_opts.conf",
+            "contents": "[Service]\nEnvironment=\"DOCKER_OPTS=--storage-driver=devicemapper --storage-opt=dm.thinpooldev=/dev/mapper/docker-thinpool --storage-opt=dm.use_deferred_removal=true --storage-opt=dm.basesize=25G\"\n"
+          }
+        ]
+      },
+      {
+        "name": "create-data-volume-group.service",
+        "enable": true,
+        "contents": "[Unit]\nDescription=Create data volume group\nAfter=lvm2-activation.service\nRequires=lvm2-activation.service\nConditionPathExists=/etc/check_vg.sh\n[Service]\nType=oneshot\nExecStart=/bin/sh /etc/check_vg.sh data /dev/sdc\n"
+      }
+    ]
+  },
+  "networkd": {
+    "units": [
+      {
+        "name": "00-ens192.network",
+        "contents": "[Match]\nName=ens192\n[Network]\nAddress=10.0.0.101/24\n"
+      }
+    ]
+  },
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA4giEY9NfIhEd16jBxAYSDAx+Drc0bV09rYaIyitUNrbpKVQ0Nm2yYn3VgKrPZnUEcNgtLTD1nB68QzfIJfWgQhv0V+z/EhnNDoAkxvFrW1MNDBzgrtHJEKvkVacI7zEAA/TLkrvyyVDjC3ETtA2Pye6l2Lnq5gDrgcJ6Q8eOM3LroH5E8jXmCSQI4xJuILl9M/glBapzJb/R85O02v9KpBOQJSrGmSKnWzxWaNvjnBvylkUZ8vd6i7yuby4RwhBgohgF9FP0MUHT/bqx8lVZUjiqNZUtsaxdH5SsEdMlMXKcLw/Q5d9VEMDFWxESKc0h8mT6INCVLFlGqJicijQylw==",
+          "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3ckcUy+ysoytNKdqdyVUCp3TVQlfrVZwlLWWY10t43qrCo+3+8Ccd/Or7HPERUyKQu7fW+Cd8J766ckdcZPSn6Fk6PFf87jHsVqcin5mmhF3T74oFlEg4b++ieKcNKjFH9DopvclzIA07AuZMfbNe1tumak+O2FMkelkHTsUQ7QiJ/etYPmJ+FpD9KnTiHm6eF5wmrobxuavOLIhP9JvlzM6E3uNV+B6S7geqH9wRxEDBVLUQVnZQAtiZlk8RUmJsMHfHBx4Vg3Uqs8/pCPf1tJPOqkIsxzvGHn+wB9ypsvY190aAW1CvAIHM5fL82seKfpPHo9078qDz32mZ7wQn"
+        ]
+      }
+    ]
+  }
+}
