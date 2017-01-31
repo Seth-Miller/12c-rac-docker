@@ -132,6 +132,43 @@ Create a port forwarding rule to connect a local ssh client to the NAT network
 ```
 
 
+## Container Linux Configuration / Ignition
+### This section is not yet complete
+An alternative to using cloud-config for the configuration of CoreOS is to use Container Linux Configuration and Ignition. Ignition allows for more flexibility in most cases because the configuration is done earlier in the boot process and has deeper hooks into the operating system.
+
+The CoreOS toolbox is a method of using tools not installed in CoreOS by creating a container and namespace where these tools can be installed and used. Use the CoreOS toolbox to build the config transpiler (ct).
+```
+toolbox yum --nogpgcheck -y install go git
+toolbox git clone https://github.com/coreos/container-linux-config-transpiler.git
+toolbox --chdir=/container-linux-config-transpiler ./build
+```
+
+The `ct` utility is now available in the CoreOS toolbox. The ct utility can read the configuration from stdin and will print the ignition config in JSON format on stdout. Here is an example with a config that just has the ssh authorized keys for the core user.
+```yaml
+# ct.config
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA4giEY9NfIhEd16jBxAYSDAx+Drc
+```
+```bash
+core ~ $ cat ct.config | toolbox /container-linux-config-transpiler/bin/ct
+Spawning container core-fedora-latest on /var/lib/toolbox/core-fedora-latest.
+Press ^] three times within 1s to kill container.
+
+
+{"ignition":{"version":"2.0.0","config":{}},"storage":{},"systemd":{},"networkd":{},"passwd":{"users":[{"name":"core","sshAuthorizedKeys":["ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA4giEY9NfIhEd16jBxAYSDAx+Drc"]}]}}
+Container core-fedora-latest exited successfully.
+```
+
+For VMware vApp, we need the base64 encoded version of the ignition file.
+```
+cat ct.config | toolbox /container-linux-config-transpiler/bin/ct 2>/dev/null | base64 -w0 && echo
+```
+
+***
+
 
 # TODO
 
