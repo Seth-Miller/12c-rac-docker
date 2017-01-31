@@ -7,6 +7,17 @@
     "files": [
       {
         "filesystem": "root",
+        "path": "/etc/hostname",
+        "contents": {
+          "source": "data:,kube-a",
+          "verification": {}
+        },
+        "mode": 272,
+        "user": {},
+        "group": {}
+      },
+      {
+        "filesystem": "root",
         "path": "/etc/check_vg.sh",
         "contents": {
           "source": "data:,if%20!%20%24(%2Fusr%2Fsbin%2Fvgs%20%241%20%3E%2Fdev%2Fnull%202%3E%261)%3B%20then%0A%20%20%2Fusr%2Fsbin%2Fpvcreate%20%242%0A%20%20%2Fusr%2Fsbin%2Fvgcreate%20%241%20%242%0A%20%20%2Fusr%2Fsbin%2Fvgs%20%241%20%3E%2Fdev%2Fnull%202%3E%261%0Afi%0A",
