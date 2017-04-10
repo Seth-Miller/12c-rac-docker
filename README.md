@@ -205,7 +205,7 @@ cp 99-asm-disks.rules /srv/docker/rac_nodes/custom_services/
 
 Link the udev configuration file to the udev rules.d directory in the RAC node container.
 ```
-docker exec rac1 ln -s /usr/lib/custom_services/99-asm-disk.rules  /etc/udev/rules.d/
+docker exec rac1 ln -s /usr/lib/custom_services/99-asm-disks.rules  /etc/udev/rules.d/
 ```
 
 Tell udev to read the new rules configuration.
